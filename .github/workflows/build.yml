@@ -9,8 +9,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: Randomblock1/theos-action@v1
-      - run: make clean && make package FINALPACKAGE=1
-      - uses: actions/upload-artifact@v4
+
+      - name: Build Tweak
+        run: |
+          make clean
+          make package FINALPACKAGE=1
+
+      - name: Extract dylib
+        run: |
+          mkdir -p output
+          cd packages
+          for f in *.deb; do
+            ar x "$f"
+            tar -xf data.tar.*
+            find . -name "*.dylib" -exec cp {} ../output/ \;
+          done
+          ls -la ../output/
+
+      - name: Upload dylib
+        uses: actions/upload-artifact@v4
         with:
-          name: PsyhotropMenu
-          path: packages/*.deb
+          name: PsyhotropMenu-dylib
+          path: output/*.dylib
