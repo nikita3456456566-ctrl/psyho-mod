@@ -1,6 +1,13 @@
 #import <UIKit/UIKit.h>
 
-// ===== ТОЧКА ВХОДА =====
+// ===== Объявление класса ДО его использования =====
+@interface PSYMenu : NSObject
++ (instancetype)shared;
+- (void)show;
+- (void)hide;
+@end
+
+// ===== Точка входа (Logos) =====
 %ctor {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC),
                    dispatch_get_main_queue(), ^{
@@ -8,13 +15,7 @@
     });
 }
 
-// ===== ГЛАВНОЕ МЕНЮ =====
-@interface PSYMenu : NSObject
-+ (instancetype)shared;
-- (void)show;
-- (void)hide;
-@end
-
+// ===== Реализация =====
 @implementation PSYMenu {
     UIWindow *_window;
     BOOL _visible;
