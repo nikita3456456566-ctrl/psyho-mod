@@ -1,0 +1,9 @@
+Package: com.psyhotrop.menu
+Name: Psyhotrop Menu
+Version: 1.0.0
+Architecture: iphoneos-arm
+Description: Psyhotrop overlay
+Maintainer: psyhotrop1337
+Author: psyhotrop1337
+Section: Tweaks
+Depends: mobilesubstrate
