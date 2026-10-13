@@ -353,7 +353,6 @@ static void initColors(void) {
             [t setTitleColor:C_muted forState:UIControlStateNormal];
             t.titleLabel.font = [UIFont boldSystemFontOfSize:7];
             t.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-            t.contentEdgeInsets = UIEdgeInsetsMake(0, 8, 0, 0);
             t.backgroundColor = [UIColor clearColor];
             t.layer.cornerRadius = 8;
             t.tag = i;
