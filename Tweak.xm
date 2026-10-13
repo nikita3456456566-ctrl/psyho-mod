@@ -31,33 +31,7 @@ static void applyTheme(NSString *name) {
     gBg = [UIColor blackColor];
 }
 
-static NSString *const kThemeChanged = @"PSYThemeChanged";
-
-// Рекурсивно обновляет цвета всех элементов
-static void recolorView(UIView *v) {
-    for (UIView *sub in v.subviews) {
-        if ([sub isKindOfClass:[UILabel class]]) {
-            UILabel *l = (UILabel *)sub;
-            if (l.tag == 1)      l.textColor = gAccent;             // заголовок секции
-            else if (l.tag == 3) l.textColor = [UIColor colorWithWhite:0.55 alpha:1];
-            else                 l.textColor = [UIColor colorWithWhite:0.9 alpha:1];
-        }
-        else if ([sub isKindOfClass:[UIButton class]]) {
-            UIButton *b = (UIButton *)sub;
-            [b setTitleColor:gAccent forState:UIControlStateNormal];
-            b.layer.borderColor = gAccent.CGColor;
-            b.backgroundColor = gAccentSoft;
-        }
-        else if ([sub isKindOfClass:[UIView class]]) {
-            // Секция с рамкой
-            if (sub.tag == 100) {
-                sub.layer.borderColor = gAccent.CGColor;
-            }
-        }
-        [recolorView:sub copy];
-    }
-}
-
+static NSString *const kThemeChanged = @"
 // ============================================================
 // ТУМБЛЕР
 // ============================================================
