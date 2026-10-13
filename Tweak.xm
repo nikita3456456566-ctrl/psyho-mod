@@ -33,6 +33,31 @@ static void applyTheme(NSString *name) {
 
 static NSString *const kThemeChanged = @"PSYThemeChanged";
 
+// Рекурсивно обновляет цвета всех элементов
+static void recolorView(UIView *v) {
+    for (UIView *sub in v.subviews) {
+        if ([sub isKindOfClass:[UILabel class]]) {
+            UILabel *l = (UILabel *)sub;
+            if (l.tag == 1)      l.textColor = gAccent;             // заголовок секции
+            else if (l.tag == 3) l.textColor = [UIColor colorWithWhite:0.55 alpha:1];
+            else                 l.textColor = [UIColor colorWithWhite:0.9 alpha:1];
+        }
+        else if ([sub isKindOfClass:[UIButton class]]) {
+            UIButton *b = (UIButton *)sub;
+            [b setTitleColor:gAccent forState:UIControlStateNormal];
+            b.layer.borderColor = gAccent.CGColor;
+            b.backgroundColor = gAccentSoft;
+        }
+        else if ([sub isKindOfClass:[UIView class]]) {
+            // Секция с рамкой
+            if (sub.tag == 100) {
+                sub.layer.borderColor = gAccent.CGColor;
+            }
+        }
+        [recolorView:sub copy];
+    }
+}
+
 // ============================================================
 // ТУМБЛЕР
 // ============================================================
@@ -95,7 +120,6 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
 @property (nonatomic, assign) float value;
 @property (nonatomic, assign) float minValue;
 @property (nonatomic, assign) float maxValue;
-@property (nonatomic, copy) void (^onChange)(float);
 @end
 
 @implementation PSYSlider {
@@ -142,7 +166,6 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
     float ratio = MAX(0, MIN(1, p.x / self.bounds.size.width));
     self.value = _minValue + ratio * (_maxValue - _minValue);
     [self updatePosition];
-    if (self.onChange) self.onChange(self.value);
 }
 - (void)setValue:(float)value {
     _value = MAX(_minValue, MIN(_maxValue, value));
@@ -166,6 +189,51 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
 @end
 
 // ============================================================
+// HUD — теперь ПОД меню
+// ============================================================
+@interface PSYTopHUD : UIWindow
+@end
+
+@implementation PSYTopHUD
+- (instancetype)init {
+    CGFloat w = 120, h = 30;
+    CGFloat sw = [UIScreen mainScreen].bounds.size.width;
+    self = [super initWithFrame:CGRectMake((sw - w)/2, 40, w, h)];
+    if (self) {
+        self.windowLevel = UIWindowLevelAlert + 50;   // ПОД меню (было +150)
+        self.backgroundColor = [UIColor clearColor];
+        self.layer.cornerRadius = 8;
+        self.layer.borderWidth = 1;
+        self.layer.borderColor = gAccent.CGColor;
+        self.clipsToBounds = YES;
+
+        UIView *bg = [[UIView alloc] initWithFrame:self.bounds];
+        bg.backgroundColor = [UIColor colorWithWhite:1 alpha:0.1];
+        [self addSubview:bg];
+
+        UILabel *label = [[UILabel alloc] initWithFrame:self.bounds];
+        label.text = @"psyho vip";
+        label.textColor = [UIColor whiteColor];
+        label.font = [UIFont systemFontOfSize:12 weight:UIFontWeightSemibold];
+        label.textAlignment = NSTextAlignmentCenter;
+        label.alpha = 0.95;
+        label.tag = 999;
+        [self addSubview:label];
+
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(refreshTheme) name:kThemeChanged object:nil];
+        self.hidden = NO;
+    }
+    return self;
+}
+- (void)refreshTheme {
+    self.layer.borderColor = gAccent.CGColor;
+}
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+@end
+
+// ============================================================
 // КРУГЛАЯ КНОПКА
 // ============================================================
 @interface PSYCircleButton : UIWindow
@@ -176,10 +244,9 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
 }
 - (instancetype)init {
     CGFloat size = 52;
-    CGRect frame = CGRectMake(40, 100, size, size);
-    self = [super initWithFrame:frame];
+    self = [super initWithFrame:CGRectMake(40, 100, size, size)];
     if (self) {
-        self.windowLevel = UIWindowLevelAlert + 200;
+        self.windowLevel = UIWindowLevelAlert + 300;  // САМЫЙ ВЫСОКИЙ, чтобы всегда был виден
         self.backgroundColor = [UIColor clearColor];
         self.layer.cornerRadius = size / 2;
         self.clipsToBounds = YES;
@@ -227,52 +294,6 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
 @end
 
 // ============================================================
-// HUD
-// ============================================================
-@interface PSYTopHUD : UIWindow
-@end
-
-@implementation PSYTopHUD {
-    UILabel *_label;
-}
-- (instancetype)init {
-    CGFloat w = 120, h = 30;
-    CGFloat sw = [UIScreen mainScreen].bounds.size.width;
-    self = [super initWithFrame:CGRectMake((sw - w)/2, 40, w, h)];
-    if (self) {
-        self.windowLevel = UIWindowLevelAlert + 150;
-        self.backgroundColor = [UIColor clearColor];
-        self.layer.cornerRadius = 8;
-        self.layer.borderWidth = 1;
-        self.layer.borderColor = gAccent.CGColor;
-        self.clipsToBounds = YES;
-
-        UIView *bg = [[UIView alloc] initWithFrame:self.bounds];
-        bg.backgroundColor = [UIColor colorWithWhite:1 alpha:0.08];
-        [self addSubview:bg];
-
-        _label = [[UILabel alloc] initWithFrame:self.bounds];
-        _label.text = @"psyho vip";
-        _label.textColor = [UIColor whiteColor];
-        _label.font = [UIFont systemFontOfSize:12 weight:UIFontWeightSemibold];
-        _label.textAlignment = NSTextAlignmentCenter;
-        _label.alpha = 0.95;
-        [self addSubview:_label];
-
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(refreshTheme) name:kThemeChanged object:nil];
-        self.hidden = NO;
-    }
-    return self;
-}
-- (void)refreshTheme {
-    self.layer.borderColor = gAccent.CGColor;
-}
-- (void)dealloc {
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
-}
-@end
-
-// ============================================================
 // МЕНЮ
 // ============================================================
 @interface PSYMenuWindow : UIWindow
@@ -281,6 +302,7 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
 @implementation PSYMenuWindow {
     UIView *_container;
     UIView *_header;
+    UIView *_dragBar;
     UILabel *_brand;
     UILabel *_sub;
     UIButton *_closeBtn;
@@ -290,12 +312,12 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
     int _currentTab;
 }
 - (instancetype)init {
-    CGFloat w = 340, h = 520;
+    CGFloat w = 300, h = 460;   // МЕНЬШЕ — 300×460 вместо 340×520
     CGFloat sw = [UIScreen mainScreen].bounds.size.width;
     CGFloat sh = [UIScreen mainScreen].bounds.size.height;
     self = [super initWithFrame:CGRectMake((sw-w)/2, (sh-h)/2, w, h)];
     if (self) {
-        self.windowLevel = UIWindowLevelAlert + 100;
+        self.windowLevel = UIWindowLevelAlert + 200;   // ВЫШЕ HUD, но НИЖЕ круга
         self.backgroundColor = [UIColor clearColor];
 
         _container = [[UIView alloc] initWithFrame:self.bounds];
@@ -306,27 +328,36 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
         _container.clipsToBounds = YES;
         [self addSubview:_container];
 
-        _header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, w, 60)];
-        _header.backgroundColor = [UIColor colorWithWhite:0 alpha:0.4];
+        // ХЕДЕР с ЯРКИМ фоном и индикатором
+        _header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, w, 68)];
+        _header.backgroundColor = [UIColor colorWithWhite:0.08 alpha:1];
+        _header.userInteractionEnabled = YES;
+
+        // Полоска-индикатор перетаскивания сверху
+        _dragBar = [[UIView alloc] initWithFrame:CGRectMake(w/2 - 20, 6, 40, 4)];
+        _dragBar.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.7];
+        _dragBar.layer.cornerRadius = 2;
+        [_header addSubview:_dragBar];
+
         UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleDrag:)];
         [_header addGestureRecognizer:pan];
-        _header.userInteractionEnabled = YES;
+
         [_container addSubview:_header];
 
-        _brand = [[UILabel alloc] initWithFrame:CGRectMake(20, 12, 200, 24)];
+        _brand = [[UILabel alloc] initWithFrame:CGRectMake(20, 20, 200, 24)];
         _brand.text = @"@AWVVL";
         _brand.textColor = [UIColor whiteColor];
         _brand.font = [UIFont boldSystemFontOfSize:16];
         [_header addSubview:_brand];
 
-        _sub = [[UILabel alloc] initWithFrame:CGRectMake(20, 34, 200, 14)];
+        _sub = [[UILabel alloc] initWithFrame:CGRectMake(20, 44, 200, 14)];
         _sub.text = @"PREMIUM MENU";
         _sub.textColor = [UIColor colorWithWhite:0.55 alpha:1];
         _sub.font = [UIFont systemFontOfSize:8];
         [_header addSubview:_sub];
 
         _closeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-        _closeBtn.frame = CGRectMake(w - 52, 14, 32, 32);
+        _closeBtn.frame = CGRectMake(w - 48, 22, 32, 32);
         [_closeBtn setTitle:@"✕" forState:UIControlStateNormal];
         [_closeBtn setTitleColor:gAccent forState:UIControlStateNormal];
         _closeBtn.titleLabel.font = [UIFont systemFontOfSize:16];
@@ -335,8 +366,8 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
         [_closeBtn addTarget:self action:@selector(closeMenu) forControlEvents:UIControlEventTouchUpInside];
         [_header addSubview:_closeBtn];
 
-        _tabsRow = [[UIView alloc] initWithFrame:CGRectMake(12, 70, w - 24, 40)];
-        _tabsRow.backgroundColor = [UIColor clearColor];
+        // ВКЛАДКИ
+        _tabsRow = [[UIView alloc] initWithFrame:CGRectMake(12, 78, w - 24, 40)];
         [_container addSubview:_tabsRow];
 
         _tabButtons = [NSMutableArray array];
@@ -357,7 +388,7 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
             [_tabsRow addSubview:btn];
             [_tabButtons addObject:btn];
 
-            UIView *page = [[UIView alloc] initWithFrame:CGRectMake(12, 120, w - 24, h - 132)];
+            UIView *page = [[UIView alloc] initWithFrame:CGRectMake(12, 128, w - 24, h - 140)];
             page.backgroundColor = [UIColor clearColor];
             page.hidden = (i != 0);
             [_container addSubview:page];
@@ -385,6 +416,27 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
     [_closeBtn setTitleColor:gAccent forState:UIControlStateNormal];
     _closeBtn.backgroundColor = gAccentSoft;
     [self updateTabStyles];
+
+    // Рекурсивно обновляем ВСЕ элементы внутри страниц
+    for (UIView *page in _tabPages) {
+        for (UIView *sub in page.subviews) {
+            if (sub.tag == 100) {
+                sub.layer.borderColor = gAccent.CGColor;
+                for (UIView *s2 in sub.subviews) {
+                    if ([s2 isKindOfClass:[UILabel class]]) {
+                        UILabel *l = (UILabel *)s2;
+                        if (l.tag == 1) l.textColor = gAccent;
+                    }
+                    else if ([s2 isKindOfClass:[UIButton class]]) {
+                        UIButton *b = (UIButton *)s2;
+                        [b setTitleColor:gAccent forState:UIControlStateNormal];
+                        b.layer.borderColor = gAccent.CGColor;
+                        b.backgroundColor = gAccentSoft;
+                    }
+                }
+            }
+        }
+    }
 }
 
 - (void)updateTabStyles {
@@ -413,7 +465,6 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
 - (void)toggleVisibility {
     self.hidden = !self.hidden;
 }
-
 - (void)closeMenu {
     self.hidden = YES;
 }
@@ -433,18 +484,20 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
 
 // ============== СТРАНИЦЫ ==============
 
-- (UIView *)makeSectionWithTitle:(NSString *)title y:(CGFloat)y inParent:(UIView *)parent {
-    UIView *sec = [[UIView alloc] initWithFrame:CGRectMake(0, y, parent.bounds.size.width, 10)];
+- (UIView *)makeSection:(NSString *)title y:(CGFloat)y height:(CGFloat)height inParent:(UIView *)parent {
+    UIView *sec = [[UIView alloc] initWithFrame:CGRectMake(0, y, parent.bounds.size.width, height)];
     sec.backgroundColor = [UIColor colorWithWhite:1 alpha:0.03];
     sec.layer.cornerRadius = 14;
     sec.layer.borderWidth = 1;
     sec.layer.borderColor = gAccent.CGColor;
+    sec.tag = 100;
     [parent addSubview:sec];
 
     UILabel *t = [[UILabel alloc] initWithFrame:CGRectMake(14, 8, sec.bounds.size.width - 28, 16)];
     t.text = title;
     t.textColor = gAccent;
     t.font = [UIFont systemFontOfSize:10 weight:UIFontWeightBold];
+    t.tag = 1;
     [sec addSubview:t];
     return sec;
 }
@@ -454,6 +507,7 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
     lbl.text = title;
     lbl.textColor = [UIColor colorWithWhite:0.9 alpha:1];
     lbl.font = [UIFont systemFontOfSize:13];
+    lbl.tag = 2;
     [section addSubview:lbl];
 
     PSYSwitch *sw = [[PSYSwitch alloc] init];
@@ -466,6 +520,7 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
     lbl.text = title;
     lbl.textColor = [UIColor colorWithWhite:0.55 alpha:1];
     lbl.font = [UIFont systemFontOfSize:11];
+    lbl.tag = 3;
     [section addSubview:lbl];
 
     PSYSlider *sl = [[PSYSlider alloc] init];
@@ -474,41 +529,35 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
 }
 
 - (void)buildESPPage:(UIView *)page {
-    UIView *sec1 = [self makeSectionWithTitle:@"VISUAL" y:0 inParent:page];
-    sec1.frame = CGRectMake(0, 0, page.bounds.size.width, 210);
+    UIView *sec1 = [self makeSection:@"VISUAL" y:0 height:210 inParent:page];
     [self addToggleIn:sec1 title:@"Box" y:44];
     [self addToggleIn:sec1 title:@"Line" y:84];
     [self addToggleIn:sec1 title:@"Distance" y:124];
     [self addToggleIn:sec1 title:@"Head Dot" y:164];
 
-    UIView *sec2 = [self makeSectionWithTitle:@"FILL" y:220 inParent:page];
-    sec2.frame = CGRectMake(0, 220, page.bounds.size.width, 130);
+    UIView *sec2 = [self makeSection:@"FILL" y:220 height:130 inParent:page];
     [self addToggleIn:sec2 title:@"Box Fill" y:44];
     [self addToggleIn:sec2 title:@"HP Bar" y:84];
 }
 
 - (void)buildAIMPage:(UIView *)page {
-    UIView *sec1 = [self makeSectionWithTitle:@"AIMBOT" y:0 inParent:page];
-    sec1.frame = CGRectMake(0, 0, page.bounds.size.width, 190);
+    UIView *sec1 = [self makeSection:@"AIMBOT" y:0 height:190 inParent:page];
     [self addToggleIn:sec1 title:@"Enable" y:44];
     [self addToggleIn:sec1 title:@"FOV Circle" y:84];
     [self addToggleIn:sec1 title:@"Silent" y:124];
 
-    UIView *sec2 = [self makeSectionWithTitle:@"PARAMS" y:200 inParent:page];
-    sec2.frame = CGRectMake(0, 200, page.bounds.size.width, 180);
+    UIView *sec2 = [self makeSection:@"PARAMS" y:200 height:180 inParent:page];
     [self addSliderIn:sec2 title:@"FOV Radius" y:44];
     [self addSliderIn:sec2 title:@"Smooth" y:110];
 }
 
 - (void)buildCFGPage:(UIView *)page {
-    UIView *sec1 = [self makeSectionWithTitle:@"SETTINGS" y:0 inParent:page];
-    sec1.frame = CGRectMake(0, 0, page.bounds.size.width, 190);
+    UIView *sec1 = [self makeSection:@"SETTINGS" y:0 height:190 inParent:page];
     [self addToggleIn:sec1 title:@"Sound" y:44];
     [self addToggleIn:sec1 title:@"Vibration" y:84];
     [self addToggleIn:sec1 title:@"HUD" y:124];
 
-    UIView *sec2 = [self makeSectionWithTitle:@"PROFILES" y:200 inParent:page];
-    sec2.frame = CGRectMake(0, 200, page.bounds.size.width, 90);
+    UIView *sec2 = [self makeSection:@"PROFILES" y:200 height:90 inParent:page];
     UIButton *save = [UIButton buttonWithType:UIButtonTypeSystem];
     save.frame = CGRectMake(14, 40, (sec2.bounds.size.width - 42)/2, 34);
     [save setTitle:@"SAVE" forState:UIControlStateNormal];
@@ -536,6 +585,7 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
     ver.textColor = gAccent;
     ver.font = [UIFont boldSystemFontOfSize:28];
     ver.textAlignment = NSTextAlignmentCenter;
+    ver.tag = 1;
     [page addSubview:ver];
 
     UILabel *au = [[UILabel alloc] initWithFrame:CGRectMake(0, 62, page.bounds.size.width, 20)];
@@ -543,10 +593,10 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
     au.textColor = [UIColor colorWithWhite:0.55 alpha:1];
     au.font = [UIFont systemFontOfSize:10];
     au.textAlignment = NSTextAlignmentCenter;
+    au.tag = 3;
     [page addSubview:au];
 
-    UIView *sec = [self makeSectionWithTitle:@"THEME" y:100 inParent:page];
-    sec.frame = CGRectMake(0, 100, page.bounds.size.width, 180);
+    UIView *sec = [self makeSection:@"THEME" y:100 height:180 inParent:page];
 
     NSArray *names = @[@"Black & White", @"Black & Blue", @"Black & Red", @"Neon Green"];
     for (int i = 0; i < 4; i++) {
@@ -555,9 +605,9 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
         CGFloat y = 40 + (i / 2) * 56;
         b.frame = CGRectMake(x, y, sec.bounds.size.width / 2 - 12, 48);
         [b setTitle:names[i] forState:UIControlStateNormal];
-        [b setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+        [b setTitleColor:gAccent forState:UIControlStateNormal];
         b.titleLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightSemibold];
-        b.backgroundColor = [UIColor colorWithWhite:1 alpha:0.03];
+        b.backgroundColor = gAccentSoft;
         b.layer.cornerRadius = 10;
         b.layer.borderWidth = 1;
         b.layer.borderColor = gAccent.CGColor;
