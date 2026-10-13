@@ -23,7 +23,7 @@ static void applyTheme(NSString *name) {
         gAccent = [UIColor colorWithRed:0 green:1 blue:0.47 alpha:1];
         gAccent2 = [UIColor colorWithRed:0 green:0.63 blue:0.31 alpha:1];
         gAccentSoft = [UIColor colorWithRed:0 green:1 blue:0.47 alpha:0.12];
-    } else { // red (default)
+    } else {
         gAccent = [UIColor colorWithRed:1 green:0.2 blue:0.27 alpha:1];
         gAccent2 = [UIColor colorWithRed:0.76 green:0.07 blue:0.12 alpha:1];
         gAccentSoft = [UIColor colorWithRed:1 green:0.2 blue:0.27 alpha:0.15];
@@ -31,11 +31,10 @@ static void applyTheme(NSString *name) {
     gBg = [UIColor blackColor];
 }
 
-// Уведомление о смене темы
 static NSString *const kThemeChanged = @"PSYThemeChanged";
 
 // ============================================================
-// КАСТОМНЫЙ ТУМБЛЕР
+// ТУМБЛЕР
 // ============================================================
 @interface PSYSwitch : UIControl
 @property (nonatomic, assign) BOOL on;
@@ -90,7 +89,7 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
 @end
 
 // ============================================================
-// КАСТОМНЫЙ СЛАЙДЕР
+// СЛАЙДЕР
 // ============================================================
 @interface PSYSlider : UIView
 @property (nonatomic, assign) float value;
@@ -167,7 +166,7 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
 @end
 
 // ============================================================
-// КРУГЛАЯ КНОПКА С ФОТО
+// КРУГЛАЯ КНОПКА
 // ============================================================
 @interface PSYCircleButton : UIWindow
 @end
@@ -190,7 +189,6 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
         _imageView.backgroundColor = [UIColor blackColor];
         [self addSubview:_imageView];
 
-        // Загружаем фото
         NSURL *url = [NSURL URLWithString:@"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS924TmX-UWwWpCYlH2i50OmnoW9QZh6Jra8g&s"];
         dispatch_async(dispatch_get_global_queue(0,0), ^{
             NSData *d = [NSData dataWithContentsOfURL:url];
@@ -220,7 +218,6 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
     CGPoint c = self.center;
     c.x += t.x;
     c.y += t.y;
-    // Не улетать за края
     CGFloat w = self.bounds.size.width / 2;
     c.x = MAX(w, MIN([UIScreen mainScreen].bounds.size.width - w, c.x));
     c.y = MAX(w, MIN([UIScreen mainScreen].bounds.size.height - w, c.y));
@@ -230,7 +227,7 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
 @end
 
 // ============================================================
-// HUD «psyho vip» ВВЕРХУ ПО ЦЕНТРУ
+// HUD
 // ============================================================
 @interface PSYTopHUD : UIWindow
 @end
@@ -276,7 +273,7 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
 @end
 
 // ============================================================
-// ГЛАВНОЕ МЕНЮ
+// МЕНЮ
 // ============================================================
 @interface PSYMenuWindow : UIWindow
 @end
@@ -309,10 +306,8 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
         _container.clipsToBounds = YES;
         [self addSubview:_container];
 
-        // ХЕДЕР
         _header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, w, 60)];
         _header.backgroundColor = [UIColor colorWithWhite:0 alpha:0.4];
-        UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(dragHeader:)];
         UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleDrag:)];
         [_header addGestureRecognizer:pan];
         _header.userInteractionEnabled = YES;
@@ -340,7 +335,6 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
         [_closeBtn addTarget:self action:@selector(closeMenu) forControlEvents:UIControlEventTouchUpInside];
         [_header addSubview:_closeBtn];
 
-        // ВКЛАДКИ
         _tabsRow = [[UIView alloc] initWithFrame:CGRectMake(12, 70, w - 24, 40)];
         _tabsRow.backgroundColor = [UIColor clearColor];
         [_container addSubview:_tabsRow];
@@ -371,7 +365,6 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
         }
         _currentTab = 0;
 
-        // Заполняем страницы
         [self buildESPPage:_tabPages[0]];
         [self buildAIMPage:_tabPages[1]];
         [self buildCFGPage:_tabPages[2]];
@@ -380,8 +373,6 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
         [self updateTabStyles];
 
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(refreshTheme) name:kThemeChanged object:nil];
-
-        // Слушаем toggle от круга
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(toggleVisibility) name:@"PSYToggleMenu" object:nil];
 
         self.hidden = YES;
@@ -394,9 +385,6 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
     [_closeBtn setTitleColor:gAccent forState:UIControlStateNormal];
     _closeBtn.backgroundColor = gAccentSoft;
     [self updateTabStyles];
-    for (UIView *v in _tabPages) {
-        [[NSNotificationCenter defaultCenter] postNotificationName:kThemeChanged object:v];
-    }
 }
 
 - (void)updateTabStyles {
@@ -424,14 +412,12 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
 
 - (void)toggleVisibility {
     self.hidden = !self.hidden;
-)
 }
+
 - (void)closeMenu {
     self.hidden = YES;
 }
 
-// Драг меню за хедер
-- (void)dragHeader:(UITapGestureRecognizer *)g {}
 - (void)handleDrag:(UIPanGestureRecognizer *)g {
     CGPoint t = [g translationInView:self.superview];
     CGPoint c = self.center;
@@ -453,14 +439,12 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
     sec.layer.cornerRadius = 14;
     sec.layer.borderWidth = 1;
     sec.layer.borderColor = gAccent.CGColor;
-    sec.tag = 777;
     [parent addSubview:sec];
 
     UILabel *t = [[UILabel alloc] initWithFrame:CGRectMake(14, 8, sec.bounds.size.width - 28, 16)];
     t.text = title;
     t.textColor = gAccent;
     t.font = [UIFont systemFontOfSize:10 weight:UIFontWeightBold];
-    t.tag = 778;
     [sec addSubview:t];
     return sec;
 }
@@ -491,18 +475,16 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
 
 - (void)buildESPPage:(UIView *)page {
     UIView *sec1 = [self makeSectionWithTitle:@"VISUAL" y:0 inParent:page];
-    sec1.frame = CGRectMake(0, 0, page.bounds.size.width, 190);
+    sec1.frame = CGRectMake(0, 0, page.bounds.size.width, 210);
     [self addToggleIn:sec1 title:@"Box" y:44];
     [self addToggleIn:sec1 title:@"Line" y:84];
     [self addToggleIn:sec1 title:@"Distance" y:124];
     [self addToggleIn:sec1 title:@"Head Dot" y:164];
-    sec1.frame = CGRectMake(0, 0, page.bounds.size.width, 210);
 
-    UIView *sec2 = [self makeSectionWithTitle:@"FILL" y:0 inParent:page];
+    UIView *sec2 = [self makeSectionWithTitle:@"FILL" y:220 inParent:page];
     sec2.frame = CGRectMake(0, 220, page.bounds.size.width, 130);
     [self addToggleIn:sec2 title:@"Box Fill" y:44];
     [self addToggleIn:sec2 title:@"HP Bar" y:84];
-    sec2.frame = CGRectMake(0, 220, page.bounds.size.width, 130);
 }
 
 - (void)buildAIMPage:(UIView *)page {
@@ -511,13 +493,11 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
     [self addToggleIn:sec1 title:@"Enable" y:44];
     [self addToggleIn:sec1 title:@"FOV Circle" y:84];
     [self addToggleIn:sec1 title:@"Silent" y:124];
-    sec1.frame = CGRectMake(0, 0, page.bounds.size.width, 190);
 
-    UIView *sec2 = [self makeSectionWithTitle:@"PARAMS" y:0 inParent:page];
+    UIView *sec2 = [self makeSectionWithTitle:@"PARAMS" y:200 inParent:page];
     sec2.frame = CGRectMake(0, 200, page.bounds.size.width, 180);
     [self addSliderIn:sec2 title:@"FOV Radius" y:44];
     [self addSliderIn:sec2 title:@"Smooth" y:110];
-    sec2.frame = CGRectMake(0, 200, page.bounds.size.width, 180);
 }
 
 - (void)buildCFGPage:(UIView *)page {
@@ -526,10 +506,9 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
     [self addToggleIn:sec1 title:@"Sound" y:44];
     [self addToggleIn:sec1 title:@"Vibration" y:84];
     [self addToggleIn:sec1 title:@"HUD" y:124];
-    sec1.frame = CGRectMake(0, 0, page.bounds.size.width, 190);
 
-    UIView *sec2 = [self makeSectionWithTitle:@"PROFILES" y:0 inParent:page];
-    sec2.frame = CGRectMake(0, 200, page.bounds.size.width, 80);
+    UIView *sec2 = [self makeSectionWithTitle:@"PROFILES" y:200 inParent:page];
+    sec2.frame = CGRectMake(0, 200, page.bounds.size.width, 90);
     UIButton *save = [UIButton buttonWithType:UIButtonTypeSystem];
     save.frame = CGRectMake(14, 40, (sec2.bounds.size.width - 42)/2, 34);
     [save setTitle:@"SAVE" forState:UIControlStateNormal];
@@ -549,7 +528,6 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
     load.layer.borderWidth = 1;
     load.layer.borderColor = gAccent.CGColor;
     [sec2 addSubview:load];
-    sec2.frame = CGRectMake(0, 200, page.bounds.size.width, 90);
 }
 
 - (void)buildINFOPage:(UIView *)page {
@@ -567,11 +545,10 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
     au.textAlignment = NSTextAlignmentCenter;
     [page addSubview:au];
 
-    UIView *sec = [self makeSectionWithTitle:@"THEME" y:0 inParent:page];
+    UIView *sec = [self makeSectionWithTitle:@"THEME" y:100 inParent:page];
     sec.frame = CGRectMake(0, 100, page.bounds.size.width, 180);
 
     NSArray *names = @[@"Black & White", @"Black & Blue", @"Black & Red", @"Neon Green"];
-    NSArray *keys = @[@"bw", @"blue", @"red", @"neon"];
     for (int i = 0; i < 4; i++) {
         UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
         CGFloat x = (i % 2) * (sec.bounds.size.width / 2 - 4) + 4;
@@ -588,7 +565,6 @@ static NSString *const kThemeChanged = @"PSYThemeChanged";
         [b addTarget:self action:@selector(themeTapped:) forControlEvents:UIControlEventTouchUpInside];
         [sec addSubview:b];
     }
-    sec.frame = CGRectMake(0, 100, page.bounds.size.width, 180);
 }
 
 - (void)themeTapped:(UIButton *)b {
@@ -610,11 +586,12 @@ static void psy_init(void) {
     applyTheme(@"red");
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC),
                    dispatch_get_main_queue(), ^{
-        static PSYCircleButton *circle;
-        static PSYMenuWindow *menu;
-        static PSYTopHUD *hud;
-        circle = [[PSYCircleButton alloc] init];
-        menu = [[PSYMenuWindow alloc] init];
-        hud = [[PSYTopHUD alloc] init];
+        static PSYCircleButton *circle = nil;
+        static PSYMenuWindow *menu = nil;
+        static PSYTopHUD *hud = nil;
+        if (!circle) circle = [[PSYCircleButton alloc] init];
+        if (!menu)   menu   = [[PSYMenuWindow alloc] init];
+        if (!hud)    hud    = [[PSYTopHUD alloc] init];
+        (void)circle; (void)menu; (void)hud;
     });
 }
