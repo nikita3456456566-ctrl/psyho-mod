@@ -1,7 +1,7 @@
 #import <UIKit/UIKit.h>
 
 // ============================================================
-// ЦВЕТА (монохром)
+// ЦВЕТА
 // ============================================================
 static UIColor *C_bg;
 static UIColor *C_panel;
@@ -15,7 +15,7 @@ static UIColor *C_grey;
 static void initColors(void) {
     C_bg    = [UIColor colorWithWhite:0.02 alpha:0.985];
     C_panel = [UIColor colorWithWhite:0.06 alpha:1];
-    C_card  = [UIColor colorWithWhite:0.11 alpha:0.9];
+    C_card  = [UIColor colorWithWhite:0.12 alpha:0.85];
     C_line  = [UIColor colorWithWhite:1 alpha:0.11];
     C_txt   = [UIColor colorWithWhite:0.96 alpha:1];
     C_muted = [UIColor colorWithWhite:0.65 alpha:1];
@@ -24,7 +24,7 @@ static void initColors(void) {
 }
 
 // ============================================================
-// КАСТОМНЫЙ ТУМБЛЕР (монохромный квадрат как в HTML)
+// ТУМБЛЕР
 // ============================================================
 @interface PSYCheck : UIControl
 @property (nonatomic, assign) BOOL on;
@@ -69,18 +69,15 @@ static void initColors(void) {
 @end
 
 // ============================================================
-// СЛАЙДЕР
+// СЛАЙДЕР (оставлен для совместимости)
 // ============================================================
 @interface PSYSlider : UIView
 @property (nonatomic, assign) float value;
 @end
 
 @implementation PSYSlider {
-    UIView *_track;
-    UIView *_fill;
-    UIView *_thumb;
-    float _min;
-    float _max;
+    UIView *_track; UIView *_fill; UIView *_thumb;
+    float _min; float _max;
 }
 - (instancetype)initWithWidth:(CGFloat)w {
     self = [super initWithFrame:CGRectMake(0, 0, w, 22)];
@@ -90,19 +87,14 @@ static void initColors(void) {
         _track.backgroundColor = [UIColor colorWithWhite:1 alpha:0.08];
         _track.layer.cornerRadius = 2;
         [self addSubview:_track];
-
         _fill = [[UIView alloc] initWithFrame:CGRectMake(0, 9, w * 0.5, 4)];
         _fill.backgroundColor = [UIColor colorWithWhite:0.8 alpha:1];
         _fill.layer.cornerRadius = 2;
         [self addSubview:_fill];
-
         _thumb = [[UIView alloc] initWithFrame:CGRectMake(w * 0.5 - 6, 4, 12, 12)];
         _thumb.backgroundColor = [UIColor whiteColor];
         _thumb.layer.cornerRadius = 6;
-        _thumb.layer.borderWidth = 2;
-        _thumb.layer.borderColor = [UIColor whiteColor].CGColor;
         [self addSubview:_thumb];
-
         UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(pan:)];
         [self addGestureRecognizer:pan];
         [self update];
@@ -122,16 +114,185 @@ static void initColors(void) {
     _fill.frame = CGRectMake(0, 9, x, 4);
     _thumb.center = CGPointMake(x, 10);
 }
-- (void)layoutSubviews {
-    [super layoutSubviews];
-    CGFloat w = self.bounds.size.width;
-    _track.frame = CGRectMake(0, 9, w, 4);
-    [self update];
+@end
+
+// ============================================================
+// ПОГОДА — реалистичные частицы
+// ============================================================
+typedef NS_ENUM(NSInteger, PSYWeatherType) {
+    PSYWeatherNone = 0,
+    PSYWeatherRain,
+    PSYWeatherSnow,
+    PSYWeatherLeaves
+};
+
+@interface PSYWeather : UIWindow
+@property (nonatomic, assign) PSYWeatherType type;
+- (void)setWeather:(PSYWeatherType)type;
+@end
+
+@implementation PSYWeather {
+    CADisplayLink *_link;
+    NSMutableArray *_particles;
+    NSMutableArray *_speeds;
+    CGFloat _w, _h;
+    NSTimeInterval _lastLightning;
+    UIView *_flash;
+}
+
+- (instancetype)init {
+    _w = [UIScreen mainScreen].bounds.size.width;
+    _h = [UIScreen mainScreen].bounds.size.height;
+    self = [super initWithFrame:CGRectMake(0, 0, _w, _h)];
+    if (self) {
+        self.windowLevel = UIWindowLevelAlert + 250;
+        self.backgroundColor = [UIColor clearColor];
+        self.userInteractionEnabled = NO;
+        _particles = [NSMutableArray array];
+        _speeds = [NSMutableArray array];
+        _type = PSYWeatherNone;
+        _lastLightning = 0;
+
+        _flash = [[UIView alloc] initWithFrame:self.bounds];
+        _flash.backgroundColor = [UIColor whiteColor];
+        _flash.alpha = 0;
+        _flash.userInteractionEnabled = NO;
+        [self addSubview:_flash];
+
+        _link = [CADisplayLink displayLinkWithTarget:self selector:@selector(tick)];
+        [_link addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onRain)   name:@"PSYWeatherRain"   object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onSnow)   name:@"PSYWeatherSnow"   object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onLeaves) name:@"PSYWeatherLeaves" object:nil];
+
+        self.hidden = NO;
+    }
+    return self;
+}
+
+- (void)onRain   { [self setWeather:(_type == PSYWeatherRain)   ? PSYWeatherNone : PSYWeatherRain]; }
+- (void)onSnow   { [self setWeather:(_type == PSYWeatherSnow)   ? PSYWeatherNone : PSYWeatherSnow]; }
+- (void)onLeaves { [self setWeather:(_type == PSYWeatherLeaves) ? PSYWeatherNone : PSYWeatherLeaves]; }
+
+- (void)setWeather:(PSYWeatherType)type {
+    _type = type;
+    for (UIView *v in _particles) [v removeFromSuperview];
+    [_particles removeAllObjects];
+    [_speeds removeAllObjects];
+    if (type == PSYWeatherNone) return;
+
+    int count = (type == PSYWeatherRain) ? 90 :
+                (type == PSYWeatherSnow) ? 55 :
+                (type == PSYWeatherLeaves) ? 35 : 0;
+
+    for (int i = 0; i < count; i++) {
+        UIView *p = [self createParticle:type];
+        [self addSubview:p];
+        [_particles addObject:p];
+        CGFloat s = 0.6 + (arc4random_uniform(100) / 100.0) * 1.4;
+        [_speeds addObject:@(s)];
+    }
+}
+
+- (UIView *)createParticle:(PSYWeatherType)type {
+    CGFloat x = arc4random_uniform((uint32_t)_w);
+    CGFloat y = arc4random_uniform((uint32_t)_h);
+    UIView *p;
+
+    if (type == PSYWeatherRain) {
+        CGFloat len = 12 + arc4random_uniform(20);
+        CGFloat wid = 1.6 + (arc4random_uniform(10) / 10.0);
+        p = [[UIView alloc] initWithFrame:CGRectMake(x, y, wid, len)];
+        p.backgroundColor = [UIColor clearColor];
+        CAGradientLayer *g = [CAGradientLayer layer];
+        g.frame = p.bounds;
+        g.colors = @[
+            (id)[UIColor colorWithWhite:1 alpha:0.05].CGColor,
+            (id)[UIColor colorWithWhite:0.85 alpha:0.55].CGColor,
+            (id)[UIColor colorWithWhite:1 alpha:0.9].CGColor
+        ];
+        g.locations = @[@0.0, @0.7, @1.0];
+        g.startPoint = CGPointMake(0.5, 0);
+        g.endPoint = CGPointMake(0.5, 1);
+        [p.layer addSublayer:g];
+        p.layer.cornerRadius = wid / 2;
+        p.layer.shadowColor = [UIColor whiteColor].CGColor;
+        p.layer.shadowRadius = 1.5;
+        p.layer.shadowOpacity = 0.4;
+        p.layer.shadowOffset = CGSizeZero;
+    }
+    else if (type == PSYWeatherSnow) {
+        CGFloat size = 8 + arc4random_uniform(14);
+        UILabel *snow = [[UILabel alloc] initWithFrame:CGRectMake(x, y, size, size)];
+        snow.text = @"❄";
+        snow.font = [UIFont systemFontOfSize:size];
+        snow.textColor = [UIColor colorWithWhite:1 alpha:0.9];
+        snow.textAlignment = NSTextAlignmentCenter;
+        snow.layer.shadowColor = [UIColor whiteColor].CGColor;
+        snow.layer.shadowRadius = 2;
+        snow.layer.shadowOpacity = 0.8;
+        snow.layer.shadowOffset = CGSizeZero;
+        p = snow;
+    }
+    else if (type == PSYWeatherLeaves) {
+        CGFloat size = 14 + arc4random_uniform(12);
+        UILabel *leaf = [[UILabel alloc] initWithFrame:CGRectMake(x, y, size, size)];
+        leaf.text = (arc4random_uniform(2) == 0) ? @"🍁" : @"🍂";
+        leaf.font = [UIFont systemFontOfSize:size];
+        leaf.textAlignment = NSTextAlignmentCenter;
+        leaf.alpha = 0.85;
+        p = leaf;
+    }
+    return p;
+}
+
+- (void)tick {
+    if (_type == PSYWeatherNone) return;
+    NSTimeInterval now = CACurrentMediaTime();
+
+    if (_type == PSYWeatherRain && now - _lastLightning > 5.0 + (arc4random_uniform(50) / 10.0)) {
+        _lastLightning = now;
+        [UIView animateWithDuration:0.06 animations:^{
+            self->_flash.alpha = 0.35;
+        } completion:^(BOOL fin) {
+            [UIView animateWithDuration:0.25 animations:^{
+                self->_flash.alpha = 0;
+            }];
+        }];
+    }
+
+    for (int i = 0; i < (int)_particles.count; i++) {
+        UIView *p = _particles[i];
+        CGFloat speed = [_speeds[i] floatValue];
+        CGRect f = p.frame;
+
+        if (_type == PSYWeatherRain) {
+            f.origin.y += 22 * speed;
+            f.origin.x -= 2.0 * speed;
+        } else if (_type == PSYWeatherSnow) {
+            f.origin.y += 1.4 * speed;
+            f.origin.x += sin(f.origin.y * 0.03 + i) * 0.9;
+            p.transform = CGAffineTransformRotate(p.transform, 0.015 * speed);
+        } else if (_type == PSYWeatherLeaves) {
+            f.origin.y += 1.8 * speed;
+            f.origin.x += sin(f.origin.y * 0.04 + i * 0.5) * 1.6;
+            p.transform = CGAffineTransformRotate(p.transform, 0.02 * speed);
+        }
+
+        if (f.origin.y > _h + 30) {
+            f.origin.y = -30;
+            f.origin.x = arc4random_uniform((uint32_t)_w);
+        }
+        if (f.origin.x < -40) f.origin.x = _w + 20;
+        if (f.origin.x > _w + 40) f.origin.x = -20;
+        p.frame = f;
+    }
 }
 @end
 
 // ============================================================
-// КРУГ С ФОТО (не трогаем)
+// КРУГ С ФОТО
 // ============================================================
 @interface PSYCircle : UIWindow
 @end
@@ -166,7 +327,6 @@ static void initColors(void) {
 
         UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(toggle)];
         [self addGestureRecognizer:tap];
-
         UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(drag:)];
         [self addGestureRecognizer:pan];
 
@@ -174,9 +334,7 @@ static void initColors(void) {
     }
     return self;
 }
-- (void)toggle {
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"PSYToggle" object:nil];
-}
+- (void)toggle { [[NSNotificationCenter defaultCenter] postNotificationName:@"PSYToggle" object:nil]; }
 - (void)drag:(UIPanGestureRecognizer *)g {
     CGPoint t = [g translationInView:self.superview];
     CGPoint c = self.center;
@@ -207,18 +365,15 @@ static void initColors(void) {
         self.layer.borderWidth = 1;
         self.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.3].CGColor;
         self.clipsToBounds = YES;
-
         UIView *bg = [[UIView alloc] initWithFrame:self.bounds];
         bg.backgroundColor = [UIColor colorWithWhite:1 alpha:0.1];
         [self addSubview:bg];
-
         UILabel *l = [[UILabel alloc] initWithFrame:self.bounds];
         l.text = @"psyho vip";
         l.textColor = [UIColor whiteColor];
         l.font = [UIFont systemFontOfSize:11 weight:UIFontWeightSemibold];
         l.textAlignment = NSTextAlignmentCenter;
         [self addSubview:l];
-
         self.hidden = NO;
     }
     return self;
@@ -239,6 +394,10 @@ static void initColors(void) {
     NSMutableArray *_tabs;
     NSMutableArray *_pages;
     int _curTab;
+
+    // Аккордеон World Effects
+    UIView *_worldSubContainer;
+    BOOL _worldExpanded;
 }
 - (instancetype)init {
     CGFloat sw = [UIScreen mainScreen].bounds.size.width;
@@ -250,7 +409,6 @@ static void initColors(void) {
         self.windowLevel = UIWindowLevelAlert + 200;
         self.backgroundColor = [UIColor clearColor];
 
-        // Контейнер с тёмным фоном
         _container = [[UIView alloc] initWithFrame:self.bounds];
         _container.backgroundColor = [UIColor colorWithWhite:0.03 alpha:0.985];
         _container.layer.cornerRadius = 22;
@@ -265,12 +423,10 @@ static void initColors(void) {
         _header.userInteractionEnabled = YES;
         [_container addSubview:_header];
 
-        // Разделительная линия снизу хедера
         UIView *hline = [[UIView alloc] initWithFrame:CGRectMake(0, 49, w, 1)];
         hline.backgroundColor = [UIColor colorWithWhite:1 alpha:0.11];
         [_header addSubview:hline];
 
-        // Логотип "A"
         UIView *logo = [[UIView alloc] initWithFrame:CGRectMake(6, 8, 34, 34)];
         logo.backgroundColor = [UIColor colorWithWhite:0.15 alpha:1];
         logo.layer.cornerRadius = 12;
@@ -285,7 +441,6 @@ static void initColors(void) {
         logoLbl.textAlignment = NSTextAlignmentCenter;
         [logo addSubview:logoLbl];
 
-        // Текст "awvvl" + "OVERLAY CONTROL CENTER"
         UILabel *brand = [[UILabel alloc] initWithFrame:CGRectMake(48, 12, 140, 16)];
         brand.text = @"awvvl";
         brand.textColor = [UIColor whiteColor];
@@ -298,7 +453,6 @@ static void initColors(void) {
         brandSub.font = [UIFont systemFontOfSize:7];
         [_header addSubview:brandSub];
 
-        // "ONLINE" справа
         UILabel *online = [[UILabel alloc] initWithFrame:CGRectMake(w - 100, 17, 60, 16)];
         online.text = @"ONLINE";
         online.textColor = [UIColor whiteColor];
@@ -311,7 +465,6 @@ static void initColors(void) {
         online.clipsToBounds = YES;
         [_header addSubview:online];
 
-        // Крестик
         UIButton *close = [UIButton buttonWithType:UIButtonTypeSystem];
         close.frame = CGRectMake(w - 32, 17, 24, 24);
         [close setTitle:@"✕" forState:UIControlStateNormal];
@@ -324,24 +477,18 @@ static void initColors(void) {
         [close addTarget:self action:@selector(closeMenu) forControlEvents:UIControlEventTouchUpInside];
         [_header addSubview:close];
 
-        // Панель вкладок слева
+        // Панель вкладок
         _tabbar = [[UIView alloc] initWithFrame:CGRectMake(0, 50, 70, h - 50)];
         _tabbar.backgroundColor = [UIColor colorWithWhite:0.02 alpha:0.4];
-        _tabbar.layer.borderWidth = 1;
-        _tabbar.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.08].CGColor;
         [_container addSubview:_tabbar];
 
-        // Правая разделительная линия
         UIView *vline = [[UIView alloc] initWithFrame:CGRectMake(69, 0, 1, h - 50)];
         vline.backgroundColor = [UIColor colorWithWhite:1 alpha:0.1];
         [_tabbar addSubview:vline];
 
-        // Контент
         _content = [[UIView alloc] initWithFrame:CGRectMake(70, 50, w - 70, h - 50)];
-        _content.backgroundColor = [UIColor clearColor];
         [_container addSubview:_content];
 
-        // Вкладки
         _tabs = [NSMutableArray array];
         _pages = [NSMutableArray array];
         NSArray *names = @[@"HOME", @"ESP", @"AIM", @"PERF", @"CONFIG"];
@@ -353,14 +500,12 @@ static void initColors(void) {
             [t setTitleColor:C_muted forState:UIControlStateNormal];
             t.titleLabel.font = [UIFont boldSystemFontOfSize:7];
             t.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-            t.backgroundColor = [UIColor clearColor];
             t.layer.cornerRadius = 8;
             t.tag = i;
             [t addTarget:self action:@selector(tabTap:) forControlEvents:UIControlEventTouchUpInside];
             [_tabbar addSubview:t];
             [_tabs addObject:t];
 
-            // Страница
             UIView *page = [[UIView alloc] initWithFrame:_content.bounds];
             page.hidden = (i != 0);
             [_content addSubview:page];
@@ -369,7 +514,6 @@ static void initColors(void) {
             ty += 34;
         }
 
-        // Строим страницы
         [self buildHome:_pages[0]];
         [self buildESP:_pages[1]];
         [self buildAIM:_pages[2]];
@@ -379,7 +523,6 @@ static void initColors(void) {
         _curTab = 0;
         [self updateTabStyles];
 
-        // Драг за хедер
         UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragHeader:)];
         [_header addGestureRecognizer:pan];
 
@@ -405,7 +548,6 @@ static void initColors(void) {
         }
     }
 }
-
 - (void)tabTap:(UIButton *)b {
     _curTab = (int)b.tag;
     for (int i = 0; i < _pages.count; i++) {
@@ -413,10 +555,8 @@ static void initColors(void) {
     }
     [self updateTabStyles];
 }
-
 - (void)closeMenu { self.hidden = YES; }
 - (void)toggleMenu { self.hidden = !self.hidden; }
-
 - (void)dragHeader:(UIPanGestureRecognizer *)g {
     CGPoint t = [g translationInView:self.superview];
     CGPoint c = self.center;
@@ -430,7 +570,6 @@ static void initColors(void) {
 }
 
 // ============ ХЕЛПЕРЫ ============
-
 - (UILabel *)sectionTitle:(NSString *)txt y:(CGFloat)y in:(UIView *)parent {
     UILabel *l = [[UILabel alloc] initWithFrame:CGRectMake(12, y, parent.bounds.size.width - 24, 12)];
     l.text = txt;
@@ -439,8 +578,7 @@ static void initColors(void) {
     [parent addSubview:l];
     return l;
 }
-
-- (UIView *)cardRow:(NSString *)label y:(CGFloat)y in:(UIView *)parent toggle:(BOOL)toggle {
+- (UIView *)cardRow:(NSString *)label y:(CGFloat)y in:(UIView *)parent toggle:(BOOL)toggle tag:(NSInteger)tag {
     UIView *card = [[UIView alloc] initWithFrame:CGRectMake(12, y, parent.bounds.size.width - 24, 30)];
     card.backgroundColor = [UIColor colorWithWhite:0.12 alpha:0.85];
     card.layer.cornerRadius = 8;
@@ -457,96 +595,112 @@ static void initColors(void) {
     if (toggle) {
         PSYCheck *chk = [[PSYCheck alloc] init];
         chk.center = CGPointMake(card.bounds.size.width - 20, 15);
+        chk.tag = tag;
         [card addSubview:chk];
     }
     return card;
 }
 
-- (void)statBox:(NSString *)title value:(NSString *)value x:(CGFloat)x y:(CGFloat)y w:(CGFloat)w in:(UIView *)parent {
-    UIView *b = [[UIView alloc] initWithFrame:CGRectMake(x, y, w, 46)];
-    b.backgroundColor = [UIColor colorWithWhite:0.12 alpha:0.85];
-    b.layer.cornerRadius = 8;
-    b.layer.borderWidth = 1;
-    b.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.1].CGColor;
-    [parent addSubview:b];
-
-    UILabel *k = [[UILabel alloc] initWithFrame:CGRectMake(8, 6, w - 16, 12)];
-    k.text = title;
-    k.textColor = C_muted;
-    k.font = [UIFont systemFontOfSize:6];
-    [b addSubview:k];
-
-    UILabel *v = [[UILabel alloc] initWithFrame:CGRectMake(8, 22, w - 16, 18)];
-    v.text = value;
-    v.textColor = [UIColor whiteColor];
-    v.font = [UIFont boldSystemFontOfSize:14];
-    [b addSubview:v];
-}
-
-- (void)colorSquare:(UIColor *)color x:(CGFloat)x y:(CGFloat)y in:(UIView *)parent active:(BOOL)active {
-    UIView *sq = [[UIView alloc] initWithFrame:CGRectMake(x, y, 16, 16)];
-    sq.backgroundColor = color;
-    sq.layer.cornerRadius = 6;
-    sq.layer.borderWidth = active ? 2 : 1;
-    sq.layer.borderColor = active ? [UIColor whiteColor].CGColor : [UIColor colorWithWhite:1 alpha:0.1].CGColor;
-    if (active) {
-        sq.layer.shadowColor = [UIColor whiteColor].CGColor;
-        sq.layer.shadowRadius = 6;
-        sq.layer.shadowOpacity = 0.5;
-        sq.layer.shadowOffset = CGSizeZero;
-    }
-    [parent addSubview:sq];
-}
-
-- (UIButton *)actionBtn:(NSString *)title x:(CGFloat)x y:(CGFloat)y w:(CGFloat)w in:(UIView *)parent {
-    UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
-    b.frame = CGRectMake(x, y, w, 26);
-    [b setTitle:title forState:UIControlStateNormal];
-    [b setTitleColor:C_grey forState:UIControlStateNormal];
-    b.titleLabel.font = [UIFont boldSystemFontOfSize:7];
-    b.backgroundColor = [UIColor colorWithWhite:1 alpha:0.04];
-    b.layer.cornerRadius = 7;
-    b.layer.borderWidth = 1;
-    b.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.13].CGColor;
-    [parent addSubview:b];
-    return b;
-}
-
 // ============ СТРАНИЦЫ ============
-
 - (void)buildHome:(UIView *)page {
     [self sectionTitle:@"LIVE PERFORMANCE" y:8 in:page];
-    CGFloat w = (page.bounds.size.width - 32) / 2;
-    [self statBox:@"FPS" value:@"60" x:8 y:26 w:w in:page];
-    [self statBox:@"FRAME TIME" value:@"16ms" x:16 + w y:26 w:w in:page];
-    [self statBox:@"OVERLAY FPS" value:@"60" x:8 y:78 w:w in:page];
-    [self statBox:@"UPTIME" value:@"0s" x:16 + w y:78 w:w in:page];
-
-    [self sectionTitle:@"SYSTEM" y:136 in:page];
-    [self cardRow:@"Resolution   390×844" y:154 in:page toggle:NO];
-    [self cardRow:@"Orientation  LANDSCAPE" y:186 in:page toggle:NO];
-
-    [self sectionTitle:@"QUICK PRESET" y:224 in:page];
-    CGFloat bw = (page.bounds.size.width - 32) / 3;
-    [self actionBtn:@"LOW" x:8 y:242 w:bw in:page];
-    [self actionBtn:@"BALANCED" x:12 + bw y:242 w:bw in:page];
-    [self actionBtn:@"QUALITY" x:16 + 2*bw y:242 w:bw in:page];
+    [self cardRow:@"FPS 60" y:26 in:page toggle:NO tag:0];
+    [self cardRow:@"FRAME TIME 16ms" y:58 in:page toggle:NO tag:0];
+    [self sectionTitle:@"SYSTEM" y:100 in:page];
+    [self cardRow:@"Resolution 390×844" y:118 in:page toggle:NO tag:0];
+    [self cardRow:@"Orientation LANDSCAPE" y:150 in:page toggle:NO tag:0];
 }
 
+// ============ ESP (с аккордеоном World Effects) ============
 - (void)buildESP:(UIView *)page {
     [self sectionTitle:@"ESP MASTER" y:8 in:page];
-    [self cardRow:@"Enable" y:26 in:page toggle:YES];
-    [self cardRow:@"Box" y:58 in:page toggle:YES];
-    [self cardRow:@"Line" y:90 in:page toggle:YES];
-    [self cardRow:@"Distance" y:122 in:page toggle:YES];
-    [self cardRow:@"HP Bar" y:154 in:page toggle:YES];
+    [self cardRow:@"Enable" y:26 in:page toggle:YES tag:100];
+    [self cardRow:@"Box" y:58 in:page toggle:YES tag:100];
+    [self cardRow:@"Line" y:90 in:page toggle:YES tag:100];
+    [self cardRow:@"Distance" y:122 in:page toggle:YES tag:100];
+    [self cardRow:@"HP Bar" y:154 in:page toggle:YES tag:100];
 
-    [self sectionTitle:@"BOX COLOR" y:192 in:page];
-    [self colorSquare:[UIColor colorWithRed:0.8 green:0.2 blue:0.2 alpha:1] x:12 y:210 in:page active:NO];
-    [self colorSquare:[UIColor colorWithRed:0.2 green:0.8 blue:0.2 alpha:1] x:34 y:210 in:page active:NO];
-    [self colorSquare:[UIColor colorWithRed:0.2 green:0.6 blue:1 alpha:1] x:56 y:210 in:page active:NO];
-    [self colorSquare:[UIColor colorWithRed:1 green:0.8 blue:0.2 alpha:1] x:78 y:210 in:page active:NO];
-    [self colorSquare:[UIColor whiteColor] x:100 y:210 in:page active:YES];
+    // ===== WORLD EFFECTS — карточка с главным тумблером =====
+    UIView *worldCard = [[UIView alloc] initWithFrame:CGRectMake(12, 194, page.bounds.size.width - 24, 32)];
+    worldCard.backgroundColor = [UIColor colorWithWhite:0.14 alpha:0.9];
+    worldCard.layer.cornerRadius = 8;
+    worldCard.layer.borderWidth = 1;
+    worldCard.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.15].CGColor;
+    [page addSubview:worldCard];
+
+    UILabel *worldLbl = [[UILabel alloc] initWithFrame:CGRectMake(10, 0, worldCard.bounds.size.width - 50, 32)];
+    worldLbl.text = @"WORLD EFFECTS";
+    worldLbl.textColor = [UIColor whiteColor];
+    worldLbl.font = [UIFont boldSystemFontOfSize:9];
+    [worldCard addSubview:worldLbl];
+
+    PSYCheck *worldChk = [[PSYCheck alloc] init];
+    worldChk.center = CGPointMake(worldCard.bounds.size.width - 20, 16);
+    worldChk.tag = 999;
+    [worldChk addTarget:self action:@selector(worldToggle:) forControlEvents:UIControlEventValueChanged];
+    [worldCard addSubview:worldChk];
+
+    // ===== Контейнер с подпунктами (изначально сжат в 0 высоту) =====
+    _worldSubContainer = [[UIView alloc] initWithFrame:CGRectMake(12, 228, page.bounds.size.width - 24, 0)];
+    _worldSubContainer.clipsToBounds = YES;
+    _worldSubContainer.alpha = 0;
+    [page addSubview:_worldSubContainer];
+
+    // Три подпункта с погодой
+    NSArray *weatherNames = @[@"Rain", @"Snow", @"Leaves"];
+    NSArray *weatherTags  = @[@(201), @(202), @(203)];
+    CGFloat ry = 0;
+    for (int i = 0; i < 3; i++) {
+        UIView *row = [[UIView alloc] initWithFrame:CGRectMake(0, ry, _worldSubContainer.bounds.size.width, 28)];
+        row.backgroundColor = [UIColor colorWithWhite:0.1 alpha:0.85];
+        row.layer.cornerRadius = 7;
+        row.layer.borderWidth = 1;
+        row.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.08].CGColor;
+        [_worldSubContainer addSubview:row];
+
+        UILabel *l = [[UILabel alloc] initWithFrame:CGRectMake(12, 0, row.bounds.size.width - 50, 28)];
+        l.text = weatherNames[i];
+        l.textColor = C_txt;
+        l.font = [UIFont systemFontOfSize:9];
+        [row addSubview:l];
+
+        PSYCheck *c = [[PSYCheck alloc] init];
+        c.center = CGPointMake(row.bounds.size.width - 20, 14);
+        c.tag = [weatherTags[i] integerValue];
+        [c addTarget:self action:@selector(weatherToggle:) forControlEvents:UIControlEventValueChanged];
+        [row addSubview:c];
+
+        ry += 32;
+    }
+}
+
+// Родительский тумблер — раскрывает / закрывает подпункты
+- (void)worldToggle:(PSYCheck *)sender {
+    _worldExpanded = sender.on;
+    CGFloat targetH = _worldExpanded ? (3 * 32 - 4) : 0;
+
+    CGRect f = _worldSubContainer.frame;
+    f.size.height = targetH;
+    [UIView animateWithDuration:0.28
+                          delay:0
+         usingSpringWithDamping:0.85
+          initialSpringVelocity:0.4
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        self->_worldSubContainer.frame = f;
+        self->_worldSubContainer.alpha = self->_worldExpanded ? 1.0 : 0.0;
+    } completion:nil];
+}
+
+// Тумблеры погоды
+- (void)weatherToggle:(PSYCheck *)sender {
+    if (sender.tag == 201) {
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"PSYWeatherRain" object:nil];
+    } else if (sender.tag == 202) {
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"PSYWeatherSnow" object:nil];
+    } else if (sender.tag == 203) {
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"PSYWeatherLeaves" object:nil];
+    }
 }
 
 - (void)buildAIM:(UIView *)page {
@@ -575,43 +729,21 @@ static void initColors(void) {
 
 - (void)buildPerf:(UIView *)page {
     [self sectionTitle:@"FRAME MONITOR" y:8 in:page];
-    CGFloat w = (page.bounds.size.width - 32) / 2;
-    [self statBox:@"FPS" value:@"60" x:8 y:26 w:w in:page];
-    [self statBox:@"FRAME TIME" value:@"16ms" x:16 + w y:26 w:w in:page];
-
-    [self sectionTitle:@"LOAD REDUCTION" y:84 in:page];
-    [self cardRow:@"Low Load Mode" y:102 in:page toggle:YES];
-
-    [self sectionTitle:@"OVERLAY RATE" y:142 in:page];
-    [self cardRow:@"Refresh 60 FPS" y:160 in:page toggle:NO];
-
-    [self sectionTitle:@"ACTIONS" y:200 in:page];
-    CGFloat bw = (page.bounds.size.width - 32) / 3;
-    [self actionBtn:@"RECENTER" x:8 y:218 w:bw in:page];
-    [self actionBtn:@"CLEAR" x:12 + bw y:218 w:bw in:page];
-    [self actionBtn:@"SAVE" x:16 + 2*bw y:218 w:bw in:page];
+    [self cardRow:@"FPS 60" y:26 in:page toggle:NO tag:0];
+    [self cardRow:@"Frame time 16ms" y:58 in:page toggle:NO tag:0];
+    [self sectionTitle:@"LOAD REDUCTION" y:100 in:page];
+    [self cardRow:@"Low Load Mode" yточкой **:118 in:пpage toggle:YES tag:0];
 }
 
 - (void)buildConfig:(UIView *)page {
     [self sectionTitle:@"PROFILES" y:8 in:page];
-    [self actionBtn:@"SAVE 1" x:12 y:26 w:80 in:page];
-    [self actionBtn:@"LOAD 1" x:96 y:26 w:80 in:page];
-    [self actionBtn:@"DEL 1" x:180 y:26 w:60 in:page];
-    [self actionBtn:@"SAVE 2" x:12 y:58 w:80 in:page];
-    [self actionBtn:@"LOAD 2" x:96 y:58 w:80 in:page];
-    [self actionBtn:@"DEL 2" x:180 y:58 w:60 in:page];
-    [self actionBtn:@"SAVE 3" x:12 y:90 w:80 in:page];
-    [self actionBtn:@"LOAD 3" x:96 y:90 w:80 in:page];
-    [self actionBtn:@"DEL 3" x:180 y:90 w:60 in:page];
-
+    [self cardRow:@"Slot 1" y:26 in:page toggle:NO tag:0];
+    [self cardRow:@"Slot 2" y:58 in:page toggle:NO tag:0];
+    [self cardRow:@"Slot 3" y:90 in:page toggle:NO tag:0];
     [self sectionTitle:@"UI" y:132 in:page];
-    [self cardRow:@"Vibration" y:150 in:page toggle:YES];
-    [self cardRow:@"Sound" y:182 in:page toggle:YES];
-    [self cardRow:@"Hit Sound" y:214 in:page toggle:YES];
-
-    [self actionBtn:@"SAVE ALL" x:12 y:252 w:page.bounds.size.width - 24 in:page];
+    [self cardRow:@"Vibration" y:150 in:page toggle:YES tag:0];
+    [self cardRow:@"Sound" y:182 in:page toggle:YES tag:0];
 }
-
 @end
 
 // ============================================================
@@ -625,9 +757,11 @@ static void init(void) {
         static PSYCircle *circle = nil;
         static PSYMenu *menu = nil;
         static PSYHUD *hud = nil;
-        if (!circle) circle = [[PSYCircle alloc] init];
-        if (!menu)   menu   = [[PSYMenu alloc] init];
-        if (!hud)    hud    = [[PSYHUD alloc] init];
-        (void)circle; (void)menu; (void)hud;
+        static PSYWeather *weather = nil;
+        if (!circle)  circle  = [[PSYCircle alloc] init];
+        if (!menu)    menu    = [[PSYMenu alloc] init];
+        if (!hud)     hud     = [[PSYHUD alloc] init];
+        if (!weather) weather = [[PSYWeather alloc] init];
+        (void)circle; (void)menu; (void)hud; (void)weather;
     });
 }
