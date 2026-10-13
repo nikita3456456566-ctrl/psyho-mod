@@ -732,7 +732,7 @@ typedef NS_ENUM(NSInteger, PSYWeatherType) {
     [self cardRow:@"FPS 60" y:26 in:page toggle:NO tag:0];
     [self cardRow:@"Frame time 16ms" y:58 in:page toggle:NO tag:0];
     [self sectionTitle:@"LOAD REDUCTION" y:100 in:page];
-    [self cardRow:@"Low Load Mode" yточкой **:118 in:пpage toggle:YES tag:0];
+    [self cardRow:@"Low Load Mode" y:118 in:page toggle:YES tag:0];
 }
 
 - (void)buildConfig:(UIView *)page {
