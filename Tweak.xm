@@ -1,89 +1,70 @@
 #import <UIKit/UIKit.h>
 
 // ============================================================
-// ТЕМЫ
+// ЦВЕТА (монохром)
 // ============================================================
-static UIColor *gAccent;
-static UIColor *gAccent2;
-static UIColor *gAccentSoft;
-static UIColor *gBg;
-static NSString *gTheme = @"red";
+static UIColor *C_bg;
+static UIColor *C_panel;
+static UIColor *C_card;
+static UIColor *C_line;
+static UIColor *C_txt;
+static UIColor *C_muted;
+static UIColor *C_white;
+static UIColor *C_grey;
 
-static void applyTheme(NSString *name) {
-    gTheme = name;
-    if ([name isEqualToString:@"bw"]) {
-        gAccent = [UIColor whiteColor];
-        gAccent2 = [UIColor colorWithWhite:0.5 alpha:1];
-        gAccentSoft = [UIColor colorWithWhite:1 alpha:0.12];
-    } else if ([name isEqualToString:@"blue"]) {
-        gAccent = [UIColor colorWithRed:0.23 green:0.54 blue:1 alpha:1];
-        gAccent2 = [UIColor colorWithRed:0.10 green:0.29 blue:0.81 alpha:1];
-        gAccentSoft = [UIColor colorWithRed:0.23 green:0.54 blue:1 alpha:0.15];
-    } else if ([name isEqualToString:@"neon"]) {
-        gAccent = [UIColor colorWithRed:0 green:1 blue:0.47 alpha:1];
-        gAccent2 = [UIColor colorWithRed:0 green:0.63 blue:0.31 alpha:1];
-        gAccentSoft = [UIColor colorWithRed:0 green:1 blue:0.47 alpha:0.12];
-    } else {
-        gAccent = [UIColor colorWithRed:1 green:0.2 blue:0.27 alpha:1];
-        gAccent2 = [UIColor colorWithRed:0.76 green:0.07 blue:0.12 alpha:1];
-        gAccentSoft = [UIColor colorWithRed:1 green:0.2 blue:0.27 alpha:0.15];
-    }
-    gBg = [UIColor blackColor];
+static void initColors(void) {
+    C_bg    = [UIColor colorWithWhite:0.02 alpha:0.985];
+    C_panel = [UIColor colorWithWhite:0.06 alpha:1];
+    C_card  = [UIColor colorWithWhite:0.11 alpha:0.9];
+    C_line  = [UIColor colorWithWhite:1 alpha:0.11];
+    C_txt   = [UIColor colorWithWhite:0.96 alpha:1];
+    C_muted = [UIColor colorWithWhite:0.65 alpha:1];
+    C_white = [UIColor whiteColor];
+    C_grey  = [UIColor colorWithWhite:0.74 alpha:1];
 }
 
-static NSString *const kThemeChanged = @"PSYThemeChanger";
 // ============================================================
-// ТУМБЛЕР
+// КАСТОМНЫЙ ТУМБЛЕР (монохромный квадрат как в HTML)
 // ============================================================
-@interface PSYSwitch : UIControl
+@interface PSYCheck : UIControl
 @property (nonatomic, assign) BOOL on;
 @end
 
-@implementation PSYSwitch {
-    UIView *_knob;
+@implementation PSYCheck {
+    UIView *_box;
+    UILabel *_tick;
 }
 - (instancetype)init {
-    self = [super initWithFrame:CGRectMake(0, 0, 50, 28)];
+    self = [super initWithFrame:CGRectMake(0, 0, 20, 20)];
     if (self) {
-        self.layer.cornerRadius = 14;
-        self.layer.borderWidth = 1;
-        self.backgroundColor = [UIColor colorWithWhite:1 alpha:0.05];
-        self.layer.borderColor = gAccent.CGColor;
-        _knob = [[UIView alloc] initWithFrame:CGRectMake(3, 3, 20, 20)];
-        _knob.layer.cornerRadius = 10;
-        _knob.backgroundColor = [UIColor colorWithWhite:0.27 alpha:1];
-        [self addSubview:_knob];
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(refreshTheme) name:kThemeChanged object:nil];
+        _box = [[UIView alloc] initWithFrame:self.bounds];
+        _box.layer.cornerRadius = 5;
+        _box.layer.borderWidth = 1;
+        _box.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.25].CGColor;
+        _box.backgroundColor = [UIColor colorWithWhite:0 alpha:0.25];
+        _box.userInteractionEnabled = NO;
+        [self addSubview:_box];
+
+        _tick = [[UILabel alloc] initWithFrame:self.bounds];
+        _tick.text = @"✓";
+        _tick.font = [UIFont boldSystemFontOfSize:12];
+        _tick.textAlignment = NSTextAlignmentCenter;
+        _tick.textColor = [UIColor blackColor];
+        _tick.hidden = YES;
+        _tick.userInteractionEnabled = NO;
+        [self addSubview:_tick];
     }
     return self;
 }
-- (void)refreshTheme {
-    self.layer.borderColor = gAccent.CGColor;
-    [self updateAppearance];
-}
 - (void)setOn:(BOOL)on {
     _on = on;
-    [self updateAppearance];
-}
-- (void)updateAppearance {
-    [UIView animateWithDuration:0.25 animations:^{
-        if (self->_on) {
-            self.backgroundColor = gAccent;
-            self->_knob.backgroundColor = [UIColor whiteColor];
-            self->_knob.frame = CGRectMake(27, 3, 20, 20);
-        } else {
-            self.backgroundColor = [UIColor colorWithWhite:1 alpha:0.05];
-            self->_knob.backgroundColor = [UIColor colorWithWhite:0.27 alpha:1];
-            self->_knob.frame = CGRectMake(3, 3, 20, 20);
-        }
-    }];
+    _tick.hidden = !on;
+    _box.backgroundColor = on ? [UIColor whiteColor] : [UIColor colorWithWhite:0 alpha:0.25];
+    _box.layer.borderColor = on ? [UIColor whiteColor].CGColor : [UIColor colorWithWhite:1 alpha:0.25].CGColor;
 }
 - (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     self.on = !self.on;
     [self sendActionsForControlEvents:UIControlEventValueChanged];
-}
-- (void)dealloc {
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 @end
 
@@ -92,173 +73,114 @@ static NSString *const kThemeChanged = @"PSYThemeChanger";
 // ============================================================
 @interface PSYSlider : UIView
 @property (nonatomic, assign) float value;
-@property (nonatomic, assign) float minValue;
-@property (nonatomic, assign) float maxValue;
 @end
 
 @implementation PSYSlider {
     UIView *_track;
     UIView *_fill;
     UIView *_thumb;
+    float _min;
+    float _max;
 }
-- (instancetype)init {
-    self = [super initWithFrame:CGRectMake(0, 0, 260, 30)];
+- (instancetype)initWithWidth:(CGFloat)w {
+    self = [super initWithFrame:CGRectMake(0, 0, w, 22)];
     if (self) {
-        _minValue = 0; _maxValue = 100; _value = 50;
-        _track = [[UIView alloc] initWithFrame:CGRectMake(0, 12, 260, 6)];
-        _track.backgroundColor = [UIColor colorWithWhite:1 alpha:0.06];
-        _track.layer.cornerRadius = 3;
+        _min = 0; _max = 100; _value = 50;
+        _track = [[UIView alloc] initWithFrame:CGRectMake(0, 9, w, 4)];
+        _track.backgroundColor = [UIColor colorWithWhite:1 alpha:0.08];
+        _track.layer.cornerRadius = 2;
         [self addSubview:_track];
-        _fill = [[UIView alloc] initWithFrame:CGRectMake(0, 12, 130, 6)];
-        _fill.backgroundColor = gAccent;
-        _fill.layer.cornerRadius = 3;
+
+        _fill = [[UIView alloc] initWithFrame:CGRectMake(0, 9, w * 0.5, 4)];
+        _fill.backgroundColor = [UIColor colorWithWhite:0.8 alpha:1];
+        _fill.layer.cornerRadius = 2;
         [self addSubview:_fill];
-        _thumb = [[UIView alloc] initWithFrame:CGRectMake(120, 4, 22, 22)];
+
+        _thumb = [[UIView alloc] initWithFrame:CGRectMake(w * 0.5 - 6, 4, 12, 12)];
         _thumb.backgroundColor = [UIColor whiteColor];
-        _thumb.layer.cornerRadius = 11;
+        _thumb.layer.cornerRadius = 6;
         _thumb.layer.borderWidth = 2;
-        _thumb.layer.borderColor = gAccent.CGColor;
-        _thumb.layer.shadowColor = gAccent.CGColor;
-        _thumb.layer.shadowRadius = 6;
-        _thumb.layer.shadowOpacity = 0.6;
-        _thumb.layer.shadowOffset = CGSizeZero;
+        _thumb.layer.borderColor = [UIColor whiteColor].CGColor;
         [self addSubview:_thumb];
-        [self updatePosition];
-        UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
+
+        UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(pan:)];
         [self addGestureRecognizer:pan];
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(refreshTheme) name:kThemeChanged object:nil];
+        [self update];
     }
     return self;
 }
-- (void)refreshTheme {
-    _fill.backgroundColor = gAccent;
-    _thumb.layer.borderColor = gAccent.CGColor;
-    _thumb.layer.shadowColor = gAccent.CGColor;
-}
-- (void)handlePan:(UIPanGestureRecognizer *)g {
+- (void)pan:(UIPanGestureRecognizer *)g {
     CGPoint p = [g locationInView:self];
-    float ratio = MAX(0, MIN(1, p.x / self.bounds.size.width));
-    self.value = _minValue + ratio * (_maxValue - _minValue);
-    [self updatePosition];
+    float r = MAX(0, MIN(1, p.x / self.bounds.size.width));
+    _value = _min + r * (_max - _min);
+    [self update];
 }
-- (void)setValue:(float)value {
-    _value = MAX(_minValue, MIN(_maxValue, value));
-    [self updatePosition];
-}
-- (void)updatePosition {
-    float ratio = (_value - _minValue) / (_maxValue - _minValue);
+- (void)update {
+    float r = (_value - _min) / (_max - _min);
     CGFloat w = self.bounds.size.width;
-    CGFloat x = ratio * w;
-    _fill.frame = CGRectMake(0, 12, x, 6);
-    _thumb.center = CGPointMake(x, 15);
+    CGFloat x = r * w;
+    _fill.frame = CGRectMake(0, 9, x, 4);
+    _thumb.center = CGPointMake(x, 10);
 }
 - (void)layoutSubviews {
     [super layoutSubviews];
-    _track.frame = CGRectMake(0, 12, self.bounds.size.width, 6);
-    [self updatePosition];
-}
-- (void)dealloc {
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    CGFloat w = self.bounds.size.width;
+    _track.frame = CGRectMake(0, 9, w, 4);
+    [self update];
 }
 @end
 
 // ============================================================
-// HUD — теперь ПОД меню
+// КРУГ С ФОТО (не трогаем)
 // ============================================================
-@interface PSYTopHUD : UIWindow
+@interface PSYCircle : UIWindow
 @end
 
-@implementation PSYTopHUD
-- (instancetype)init {
-    CGFloat w = 120, h = 30;
-    CGFloat sw = [UIScreen mainScreen].bounds.size.width;
-    self = [super initWithFrame:CGRectMake((sw - w)/2, 40, w, h)];
-    if (self) {
-        self.windowLevel = UIWindowLevelAlert + 50;   // ПОД меню (было +150)
-        self.backgroundColor = [UIColor clearColor];
-        self.layer.cornerRadius = 8;
-        self.layer.borderWidth = 1;
-        self.layer.borderColor = gAccent.CGColor;
-        self.clipsToBounds = YES;
-
-        UIView *bg = [[UIView alloc] initWithFrame:self.bounds];
-        bg.backgroundColor = [UIColor colorWithWhite:1 alpha:0.1];
-        [self addSubview:bg];
-
-        UILabel *label = [[UILabel alloc] initWithFrame:self.bounds];
-        label.text = @"psyho vip";
-        label.textColor = [UIColor whiteColor];
-        label.font = [UIFont systemFontOfSize:12 weight:UIFontWeightSemibold];
-        label.textAlignment = NSTextAlignmentCenter;
-        label.alpha = 0.95;
-        label.tag = 999;
-        [self addSubview:label];
-
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(refreshTheme) name:kThemeChanged object:nil];
-        self.hidden = NO;
-    }
-    return self;
-}
-- (void)refreshTheme {
-    self.layer.borderColor = gAccent.CGColor;
-}
-- (void)dealloc {
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
-}
-@end
-
-// ============================================================
-// КРУГЛАЯ КНОПКА
-// ============================================================
-@interface PSYCircleButton : UIWindow
-@end
-
-@implementation PSYCircleButton {
-    UIImageView *_imageView;
+@implementation PSYCircle {
+    UIImageView *_img;
 }
 - (instancetype)init {
-    CGFloat size = 52;
-    self = [super initWithFrame:CGRectMake(40, 100, size, size)];
+    CGFloat s = 52;
+    self = [super initWithFrame:CGRectMake(40, 100, s, s)];
     if (self) {
-        self.windowLevel = UIWindowLevelAlert + 300;  // САМЫЙ ВЫСОКИЙ, чтобы всегда был виден
+        self.windowLevel = UIWindowLevelAlert + 300;
         self.backgroundColor = [UIColor clearColor];
-        self.layer.cornerRadius = size / 2;
+        self.layer.cornerRadius = s / 2;
         self.clipsToBounds = YES;
 
-        _imageView = [[UIImageView alloc] initWithFrame:self.bounds];
-        _imageView.contentMode = UIViewContentModeScaleAspectFill;
-        _imageView.backgroundColor = [UIColor blackColor];
-        [self addSubview:_imageView];
+        _img = [[UIImageView alloc] initWithFrame:self.bounds];
+        _img.contentMode = UIViewContentModeScaleAspectFill;
+        _img.backgroundColor = [UIColor blackColor];
+        [self addSubview:_img];
 
         NSURL *url = [NSURL URLWithString:@"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS924TmX-UWwWpCYlH2i50OmnoW9QZh6Jra8g&s"];
-        dispatch_async(dispatch_get_global_queue(0,0), ^{
+        dispatch_async(dispatch_get_global_queue(0, 0), ^{
             NSData *d = [NSData dataWithContentsOfURL:url];
             if (d) {
-                UIImage *img = [UIImage imageWithData:d];
+                UIImage *im = [UIImage imageWithData:d];
                 dispatch_async(dispatch_get_main_queue(), ^{
-                    self->_imageView.image = img;
+                    self->_img.image = im;
                 });
             }
         });
 
-        UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(toggleMenu)];
+        UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(toggle)];
         [self addGestureRecognizer:tap];
 
-        UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
+        UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(drag:)];
         [self addGestureRecognizer:pan];
 
         self.hidden = NO;
     }
     return self;
 }
-- (void)toggleMenu {
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"PSYToggleMenu" object:nil];
+- (void)toggle {
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"PSYToggle" object:nil];
 }
-- (void)handlePan:(UIPanGestureRecognizer *)g {
+- (void)drag:(UIPanGestureRecognizer *)g {
     CGPoint t = [g translationInView:self.superview];
     CGPoint c = self.center;
-    c.x += t.x;
-    c.y += t.y;
+    c.x += t.x; c.y += t.y;
     CGFloat w = self.bounds.size.width / 2;
     c.x = MAX(w, MIN([UIScreen mainScreen].bounds.size.width - w, c.x));
     c.y = MAX(w, MIN([UIScreen mainScreen].bounds.size.height - w, c.y));
@@ -268,186 +190,238 @@ static NSString *const kThemeChanged = @"PSYThemeChanger";
 @end
 
 // ============================================================
-// МЕНЮ
+// HUD
 // ============================================================
-@interface PSYMenuWindow : UIWindow
+@interface PSYHUD : UIWindow
 @end
 
-@implementation PSYMenuWindow {
+@implementation PSYHUD
+- (instancetype)init {
+    CGFloat w = 100, h = 24;
+    CGFloat sw = [UIScreen mainScreen].bounds.size.width;
+    self = [super initWithFrame:CGRectMake((sw - w)/2, 30, w, h)];
+    if (self) {
+        self.windowLevel = UIWindowLevelNormal + 100;
+        self.backgroundColor = [UIColor clearColor];
+        self.layer.cornerRadius = 6;
+        self.layer.borderWidth = 1;
+        self.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.3].CGColor;
+        self.clipsToBounds = YES;
+
+        UIView *bg = [[UIView alloc] initWithFrame:self.bounds];
+        bg.backgroundColor = [UIColor colorWithWhite:1 alpha:0.1];
+        [self addSubview:bg];
+
+        UILabel *l = [[UILabel alloc] initWithFrame:self.bounds];
+        l.text = @"psyho vip";
+        l.textColor = [UIColor whiteColor];
+        l.font = [UIFont systemFontOfSize:11 weight:UIFontWeightSemibold];
+        l.textAlignment = NSTextAlignmentCenter;
+        [self addSubview:l];
+
+        self.hidden = NO;
+    }
+    return self;
+}
+@end
+
+// ============================================================
+// МЕНЮ
+// ============================================================
+@interface PSYMenu : UIWindow
+@end
+
+@implementation PSYMenu {
     UIView *_container;
     UIView *_header;
-    UIView *_dragBar;
-    UILabel *_brand;
-    UILabel *_sub;
-    UIButton *_closeBtn;
-    UIView *_tabsRow;
-    NSMutableArray *_tabButtons;
-    NSMutableArray *_tabPages;
-    int _currentTab;
+    UIView *_tabbar;
+    UIView *_content;
+    NSMutableArray *_tabs;
+    NSMutableArray *_pages;
+    int _curTab;
 }
 - (instancetype)init {
-    CGFloat w = 300, h = 460;   // МЕНЬШЕ — 300×460 вместо 340×520
     CGFloat sw = [UIScreen mainScreen].bounds.size.width;
     CGFloat sh = [UIScreen mainScreen].bounds.size.height;
+    CGFloat w = 300;
+    CGFloat h = MIN(340, sh - 40);
     self = [super initWithFrame:CGRectMake((sw-w)/2, (sh-h)/2, w, h)];
     if (self) {
-        self.windowLevel = UIWindowLevelAlert + 200;   // ВЫШЕ HUD, но НИЖЕ круга
+        self.windowLevel = UIWindowLevelAlert + 200;
         self.backgroundColor = [UIColor clearColor];
 
+        // Контейнер с тёмным фоном
         _container = [[UIView alloc] initWithFrame:self.bounds];
-        _container.backgroundColor = [UIColor colorWithWhite:0 alpha:0.96];
-        _container.layer.cornerRadius = 20;
+        _container.backgroundColor = [UIColor colorWithWhite:0.03 alpha:0.985];
+        _container.layer.cornerRadius = 22;
         _container.layer.borderWidth = 1;
-        _container.layer.borderColor = gAccent.CGColor;
+        _container.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.16].CGColor;
         _container.clipsToBounds = YES;
         [self addSubview:_container];
 
-        // ХЕДЕР с ЯРКИМ фоном и индикатором
-        _header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, w, 68)];
-        _header.backgroundColor = [UIColor colorWithWhite:0.08 alpha:1];
+        // ХЕДЕР
+        _header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, w, 50)];
+        _header.backgroundColor = [UIColor colorWithWhite:0.12 alpha:0.6];
         _header.userInteractionEnabled = YES;
-
-        // Полоска-индикатор перетаскивания сверху
-        _dragBar = [[UIView alloc] initWithFrame:CGRectMake(w/2 - 20, 6, 40, 4)];
-        _dragBar.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.7];
-        _dragBar.layer.cornerRadius = 2;
-        [_header addSubview:_dragBar];
-
-        UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleDrag:)];
-        [_header addGestureRecognizer:pan];
-
         [_container addSubview:_header];
 
-        _brand = [[UILabel alloc] initWithFrame:CGRectMake(20, 20, 200, 24)];
-        _brand.text = @"@AWVVL";
-        _brand.textColor = [UIColor whiteColor];
-        _brand.font = [UIFont boldSystemFontOfSize:16];
-        [_header addSubview:_brand];
+        // Разделительная линия снизу хедера
+        UIView *hline = [[UIView alloc] initWithFrame:CGRectMake(0, 49, w, 1)];
+        hline.backgroundColor = [UIColor colorWithWhite:1 alpha:0.11];
+        [_header addSubview:hline];
 
-        _sub = [[UILabel alloc] initWithFrame:CGRectMake(20, 44, 200, 14)];
-        _sub.text = @"PREMIUM MENU";
-        _sub.textColor = [UIColor colorWithWhite:0.55 alpha:1];
-        _sub.font = [UIFont systemFontOfSize:8];
-        [_header addSubview:_sub];
+        // Логотип "A"
+        UIView *logo = [[UIView alloc] initWithFrame:CGRectMake(6, 8, 34, 34)];
+        logo.backgroundColor = [UIColor colorWithWhite:0.15 alpha:1];
+        logo.layer.cornerRadius = 12;
+        logo.layer.borderWidth = 1;
+        logo.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.18].CGColor;
+        [_header addSubview:logo];
 
-        _closeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-        _closeBtn.frame = CGRectMake(w - 48, 22, 32, 32);
-        [_closeBtn setTitle:@"✕" forState:UIControlStateNormal];
-        [_closeBtn setTitleColor:gAccent forState:UIControlStateNormal];
-        _closeBtn.titleLabel.font = [UIFont systemFontOfSize:16];
-        _closeBtn.backgroundColor = gAccentSoft;
-        _closeBtn.layer.cornerRadius = 16;
-        [_closeBtn addTarget:self action:@selector(closeMenu) forControlEvents:UIControlEventTouchUpInside];
-        [_header addSubview:_closeBtn];
+        UILabel *logoLbl = [[UILabel alloc] initWithFrame:logo.bounds];
+        logoLbl.text = @"A";
+        logoLbl.textColor = [UIColor whiteColor];
+        logoLbl.font = [UIFont boldSystemFontOfSize:16];
+        logoLbl.textAlignment = NSTextAlignmentCenter;
+        [logo addSubview:logoLbl];
 
-        // ВКЛАДКИ
-        _tabsRow = [[UIView alloc] initWithFrame:CGRectMake(12, 78, w - 24, 40)];
-        [_container addSubview:_tabsRow];
+        // Текст "awvvl" + "OVERLAY CONTROL CENTER"
+        UILabel *brand = [[UILabel alloc] initWithFrame:CGRectMake(48, 12, 140, 16)];
+        brand.text = @"awvvl";
+        brand.textColor = [UIColor whiteColor];
+        brand.font = [UIFont boldSystemFontOfSize:11];
+        [_header addSubview:brand];
 
-        _tabButtons = [NSMutableArray array];
-        _tabPages = [NSMutableArray array];
-        NSArray *titles = @[@"ESP", @"AIM", @"CFG", @"INFO"];
-        CGFloat tabW = (w - 24) / 4.0;
-        for (int i = 0; i < 4; i++) {
-            UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
-            btn.frame = CGRectMake(i * tabW, 0, tabW - 4, 36);
-            [btn setTitle:titles[i] forState:UIControlStateNormal];
-            btn.titleLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightSemibold];
-            btn.tag = i;
-            btn.backgroundColor = [UIColor colorWithWhite:1 alpha:0.03];
-            btn.layer.cornerRadius = 10;
-            btn.layer.borderWidth = 1;
-            btn.layer.borderColor = [UIColor clearColor].CGColor;
-            [btn addTarget:self action:@selector(tabTapped:) forControlEvents:UIControlEventTouchUpInside];
-            [_tabsRow addSubview:btn];
-            [_tabButtons addObject:btn];
+        UILabel *brandSub = [[UILabel alloc] initWithFrame:CGRectMake(48, 30, 140, 12)];
+        brandSub.text = @"● OVERLAY CONTROL CENTER";
+        brandSub.textColor = C_muted;
+        brandSub.font = [UIFont systemFontOfSize:7];
+        [_header addSubview:brandSub];
 
-            UIView *page = [[UIView alloc] initWithFrame:CGRectMake(12, 128, w - 24, h - 140)];
-            page.backgroundColor = [UIColor clearColor];
+        // "ONLINE" справа
+        UILabel *online = [[UILabel alloc] initWithFrame:CGRectMake(w - 100, 17, 60, 16)];
+        online.text = @"ONLINE";
+        online.textColor = [UIColor whiteColor];
+        online.font = [UIFont boldSystemFontOfSize:7];
+        online.textAlignment = NSTextAlignmentCenter;
+        online.layer.cornerRadius = 8;
+        online.layer.borderWidth = 1;
+        online.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.2].CGColor;
+        online.backgroundColor = [UIColor colorWithWhite:1 alpha:0.06];
+        online.clipsToBounds = YES;
+        [_header addSubview:online];
+
+        // Крестик
+        UIButton *close = [UIButton buttonWithType:UIButtonTypeSystem];
+        close.frame = CGRectMake(w - 32, 17, 24, 24);
+        [close setTitle:@"✕" forState:UIControlStateNormal];
+        [close setTitleColor:C_muted forState:UIControlStateNormal];
+        close.titleLabel.font = [UIFont systemFontOfSize:12];
+        close.layer.cornerRadius = 12;
+        close.layer.borderWidth = 1;
+        close.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.11].CGColor;
+        close.backgroundColor = [UIColor colorWithWhite:1 alpha:0.04];
+        [close addTarget:self action:@selector(closeMenu) forControlEvents:UIControlEventTouchUpInside];
+        [_header addSubview:close];
+
+        // Панель вкладок слева
+        _tabbar = [[UIView alloc] initWithFrame:CGRectMake(0, 50, 70, h - 50)];
+        _tabbar.backgroundColor = [UIColor colorWithWhite:0.02 alpha:0.4];
+        _tabbar.layer.borderWidth = 1;
+        _tabbar.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.08].CGColor;
+        [_container addSubview:_tabbar];
+
+        // Правая разделительная линия
+        UIView *vline = [[UIView alloc] initWithFrame:CGRectMake(69, 0, 1, h - 50)];
+        vline.backgroundColor = [UIColor colorWithWhite:1 alpha:0.1];
+        [_tabbar addSubview:vline];
+
+        // Контент
+        _content = [[UIView alloc] initWithFrame:CGRectMake(70, 50, w - 70, h - 50)];
+        _content.backgroundColor = [UIColor clearColor];
+        [_container addSubview:_content];
+
+        // Вкладки
+        _tabs = [NSMutableArray array];
+        _pages = [NSMutableArray array];
+        NSArray *names = @[@"HOME", @"ESP", @"AIM", @"PERF", @"CONFIG"];
+        CGFloat ty = 8;
+        for (int i = 0; i < 5; i++) {
+            UIButton *t = [UIButton buttonWithType:UIButtonTypeSystem];
+            t.frame = CGRectMake(5, ty, 60, 30);
+            [t setTitle:names[i] forState:UIControlStateNormal];
+            [t setTitleColor:C_muted forState:UIControlStateNormal];
+            t.titleLabel.font = [UIFont boldSystemFontOfSize:7];
+            t.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+            t.contentEdgeInsets = UIEdgeInsetsMake(0, 8, 0, 0);
+            t.backgroundColor = [UIColor clearColor];
+            t.layer.cornerRadius = 8;
+            t.tag = i;
+            [t addTarget:self action:@selector(tabTap:) forControlEvents:UIControlEventTouchUpInside];
+            [_tabbar addSubview:t];
+            [_tabs addObject:t];
+
+            // Страница
+            UIView *page = [[UIView alloc] initWithFrame:_content.bounds];
             page.hidden = (i != 0);
-            [_container addSubview:page];
-            [_tabPages addObject:page];
+            [_content addSubview:page];
+            [_pages addObject:page];
+
+            ty += 34;
         }
-        _currentTab = 0;
 
-        [self buildESPPage:_tabPages[0]];
-        [self buildAIMPage:_tabPages[1]];
-        [self buildCFGPage:_tabPages[2]];
-        [self buildINFOPage:_tabPages[3]];
+        // Строим страницы
+        [self buildHome:_pages[0]];
+        [self buildESP:_pages[1]];
+        [self buildAIM:_pages[2]];
+        [self buildPerf:_pages[3]];
+        [self buildConfig:_pages[4]];
 
+        _curTab = 0;
         [self updateTabStyles];
 
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(refreshTheme) name:kThemeChanged object:nil];
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(toggleVisibility) name:@"PSYToggleMenu" object:nil];
+        // Драг за хедер
+        UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragHeader:)];
+        [_header addGestureRecognizer:pan];
+
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(toggleMenu) name:@"PSYToggle" object:nil];
 
         self.hidden = YES;
     }
     return self;
 }
 
-- (void)refreshTheme {
-    _container.layer.borderColor = gAccent.CGColor;
-    [_closeBtn setTitleColor:gAccent forState:UIControlStateNormal];
-    _closeBtn.backgroundColor = gAccentSoft;
-    [self updateTabStyles];
-
-    // Рекурсивно обновляем ВСЕ элементы внутри страниц
-    for (UIView *page in _tabPages) {
-        for (UIView *sub in page.subviews) {
-            if (sub.tag == 100) {
-                sub.layer.borderColor = gAccent.CGColor;
-                for (UIView *s2 in sub.subviews) {
-                    if ([s2 isKindOfClass:[UILabel class]]) {
-                        UILabel *l = (UILabel *)s2;
-                        if (l.tag == 1) l.textColor = gAccent;
-                    }
-                    else if ([s2 isKindOfClass:[UIButton class]]) {
-                        UIButton *b = (UIButton *)s2;
-                        [b setTitleColor:gAccent forState:UIControlStateNormal];
-                        b.layer.borderColor = gAccent.CGColor;
-                        b.backgroundColor = gAccentSoft;
-                    }
-                }
-            }
-        }
-    }
-}
-
 - (void)updateTabStyles {
-    for (int i = 0; i < _tabButtons.count; i++) {
-        UIButton *b = _tabButtons[i];
-        if (i == _currentTab) {
+    for (int i = 0; i < _tabs.count; i++) {
+        UIButton *b = _tabs[i];
+        if (i == _curTab) {
             [b setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-            b.backgroundColor = gAccentSoft;
-            b.layer.borderColor = gAccent.CGColor;
+            b.backgroundColor = [UIColor colorWithWhite:1 alpha:0.1];
+            b.layer.borderWidth = 1;
+            b.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.11].CGColor;
         } else {
-            [b setTitleColor:[UIColor colorWithWhite:0.5 alpha:1] forState:UIControlStateNormal];
-            b.backgroundColor = [UIColor colorWithWhite:1 alpha:0.03];
-            b.layer.borderColor = [UIColor clearColor].CGColor;
+            [b setTitleColor:C_muted forState:UIControlStateNormal];
+            b.backgroundColor = [UIColor clearColor];
+            b.layer.borderWidth = 0;
         }
     }
 }
 
-- (void)tabTapped:(UIButton *)b {
-    _currentTab = (int)b.tag;
-    for (int i = 0; i < _tabPages.count; i++) {
-        ((UIView *)_tabPages[i]).hidden = (i != _currentTab);
+- (void)tabTap:(UIButton *)b {
+    _curTab = (int)b.tag;
+    for (int i = 0; i < _pages.count; i++) {
+        ((UIView *)_pages[i]).hidden = (i != _curTab);
     }
     [self updateTabStyles];
 }
 
-- (void)toggleVisibility {
-    self.hidden = !self.hidden;
-}
-- (void)closeMenu {
-    self.hidden = YES;
-}
+- (void)closeMenu { self.hidden = YES; }
+- (void)toggleMenu { self.hidden = !self.hidden; }
 
-- (void)handleDrag:(UIPanGestureRecognizer *)g {
+- (void)dragHeader:(UIPanGestureRecognizer *)g {
     CGPoint t = [g translationInView:self.superview];
     CGPoint c = self.center;
-    c.x += t.x;
-    c.y += t.y;
+    c.x += t.x; c.y += t.y;
     CGFloat w = self.bounds.size.width / 2;
     CGFloat h = self.bounds.size.height / 2;
     c.x = MAX(w, MIN([UIScreen mainScreen].bounds.size.width - w, c.x));
@@ -456,166 +430,205 @@ static NSString *const kThemeChanged = @"PSYThemeChanger";
     [g setTranslation:CGPointZero inView:self.superview];
 }
 
-// ============== СТРАНИЦЫ ==============
+// ============ ХЕЛПЕРЫ ============
 
-- (UIView *)makeSection:(NSString *)title y:(CGFloat)y height:(CGFloat)height inParent:(UIView *)parent {
-    UIView *sec = [[UIView alloc] initWithFrame:CGRectMake(0, y, parent.bounds.size.width, height)];
-    sec.backgroundColor = [UIColor colorWithWhite:1 alpha:0.03];
-    sec.layer.cornerRadius = 14;
-    sec.layer.borderWidth = 1;
-    sec.layer.borderColor = gAccent.CGColor;
-    sec.tag = 100;
-    [parent addSubview:sec];
-
-    UILabel *t = [[UILabel alloc] initWithFrame:CGRectMake(14, 8, sec.bounds.size.width - 28, 16)];
-    t.text = title;
-    t.textColor = gAccent;
-    t.font = [UIFont systemFontOfSize:10 weight:UIFontWeightBold];
-    t.tag = 1;
-    [sec addSubview:t];
-    return sec;
+- (UILabel *)sectionTitle:(NSString *)txt y:(CGFloat)y in:(UIView *)parent {
+    UILabel *l = [[UILabel alloc] initWithFrame:CGRectMake(12, y, parent.bounds.size.width - 24, 12)];
+    l.text = txt;
+    l.textColor = [UIColor colorWithWhite:0.85 alpha:1];
+    l.font = [UIFont boldSystemFontOfSize:7];
+    [parent addSubview:l];
+    return l;
 }
 
-- (void)addToggleIn:(UIView *)section title:(NSString *)title y:(CGFloat)y {
-    UILabel *lbl = [[UILabel alloc] initWithFrame:CGRectMake(14, y, 200, 30)];
-    lbl.text = title;
-    lbl.textColor = [UIColor colorWithWhite:0.9 alpha:1];
-    lbl.font = [UIFont systemFontOfSize:13];
-    lbl.tag = 2;
-    [section addSubview:lbl];
+- (UIView *)cardRow:(NSString *)label y:(CGFloat)y in:(UIView *)parent toggle:(BOOL)toggle {
+    UIView *card = [[UIView alloc] initWithFrame:CGRectMake(12, y, parent.bounds.size.width - 24, 30)];
+    card.backgroundColor = [UIColor colorWithWhite:0.12 alpha:0.85];
+    card.layer.cornerRadius = 8;
+    card.layer.borderWidth = 1;
+    card.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.11].CGColor;
+    [parent addSubview:card];
 
-    PSYSwitch *sw = [[PSYSwitch alloc] init];
-    sw.center = CGPointMake(section.bounds.size.width - 40, y + 15);
-    [section addSubview:sw];
-}
+    UILabel *lbl = [[UILabel alloc] initWithFrame:CGRectMake(10, 0, card.bounds.size.width - 50, 30)];
+    lbl.text = label;
+    lbl.textColor = C_txt;
+    lbl.font = [UIFont systemFontOfSize:9];
+    [card addSubview:lbl];
 
-- (void)addSliderIn:(UIView *)section title:(NSString *)title y:(CGFloat)y {
-    UILabel *lbl = [[UILabel alloc] initWithFrame:CGRectMake(14, y, 200, 20)];
-    lbl.text = title;
-    lbl.textColor = [UIColor colorWithWhite:0.55 alpha:1];
-    lbl.font = [UIFont systemFontOfSize:11];
-    lbl.tag = 3;
-    [section addSubview:lbl];
-
-    PSYSlider *sl = [[PSYSlider alloc] init];
-    sl.frame = CGRectMake(14, y + 22, section.bounds.size.width - 28, 30);
-    [section addSubview:sl];
-}
-
-- (void)buildESPPage:(UIView *)page {
-    UIView *sec1 = [self makeSection:@"VISUAL" y:0 height:210 inParent:page];
-    [self addToggleIn:sec1 title:@"Box" y:44];
-    [self addToggleIn:sec1 title:@"Line" y:84];
-    [self addToggleIn:sec1 title:@"Distance" y:124];
-    [self addToggleIn:sec1 title:@"Head Dot" y:164];
-
-    UIView *sec2 = [self makeSection:@"FILL" y:220 height:130 inParent:page];
-    [self addToggleIn:sec2 title:@"Box Fill" y:44];
-    [self addToggleIn:sec2 title:@"HP Bar" y:84];
-}
-
-- (void)buildAIMPage:(UIView *)page {
-    UIView *sec1 = [self makeSection:@"AIMBOT" y:0 height:190 inParent:page];
-    [self addToggleIn:sec1 title:@"Enable" y:44];
-    [self addToggleIn:sec1 title:@"FOV Circle" y:84];
-    [self addToggleIn:sec1 title:@"Silent" y:124];
-
-    UIView *sec2 = [self makeSection:@"PARAMS" y:200 height:180 inParent:page];
-    [self addSliderIn:sec2 title:@"FOV Radius" y:44];
-    [self addSliderIn:sec2 title:@"Smooth" y:110];
-}
-
-- (void)buildCFGPage:(UIView *)page {
-    UIView *sec1 = [self makeSection:@"SETTINGS" y:0 height:190 inParent:page];
-    [self addToggleIn:sec1 title:@"Sound" y:44];
-    [self addToggleIn:sec1 title:@"Vibration" y:84];
-    [self addToggleIn:sec1 title:@"HUD" y:124];
-
-    UIView *sec2 = [self makeSection:@"PROFILES" y:200 height:90 inParent:page];
-    UIButton *save = [UIButton buttonWithType:UIButtonTypeSystem];
-    save.frame = CGRectMake(14, 40, (sec2.bounds.size.width - 42)/2, 34);
-    [save setTitle:@"SAVE" forState:UIControlStateNormal];
-    [save setTitleColor:gAccent forState:UIControlStateNormal];
-    save.backgroundColor = gAccentSoft;
-    save.layer.cornerRadius = 10;
-    save.layer.borderWidth = 1;
-    save.layer.borderColor = gAccent.CGColor;
-    [sec2 addSubview:save];
-
-    UIButton *load = [UIButton buttonWithType:UIButtonTypeSystem];
-    load.frame = CGRectMake(sec2.bounds.size.width/2 + 7, 40, (sec2.bounds.size.width - 42)/2, 34);
-    [load setTitle:@"LOAD" forState:UIControlStateNormal];
-    [load setTitleColor:gAccent forState:UIControlStateNormal];
-    load.backgroundColor = gAccentSoft;
-    load.layer.cornerRadius = 10;
-    load.layer.borderWidth = 1;
-    load.layer.borderColor = gAccent.CGColor;
-    [sec2 addSubview:load];
-}
-
-- (void)buildINFOPage:(UIView *)page {
-    UILabel *ver = [[UILabel alloc] initWithFrame:CGRectMake(0, 20, page.bounds.size.width, 40)];
-    ver.text = @"v1.0";
-    ver.textColor = gAccent;
-    ver.font = [UIFont boldSystemFontOfSize:28];
-    ver.textAlignment = NSTextAlignmentCenter;
-    ver.tag = 1;
-    [page addSubview:ver];
-
-    UILabel *au = [[UILabel alloc] initWithFrame:CGRectMake(0, 62, page.bounds.size.width, 20)];
-    au.text = @"@AWVVL";
-    au.textColor = [UIColor colorWithWhite:0.55 alpha:1];
-    au.font = [UIFont systemFontOfSize:10];
-    au.textAlignment = NSTextAlignmentCenter;
-    au.tag = 3;
-    [page addSubview:au];
-
-    UIView *sec = [self makeSection:@"THEME" y:100 height:180 inParent:page];
-
-    NSArray *names = @[@"Black & White", @"Black & Blue", @"Black & Red", @"Neon Green"];
-    for (int i = 0; i < 4; i++) {
-        UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
-        CGFloat x = (i % 2) * (sec.bounds.size.width / 2 - 4) + 4;
-        CGFloat y = 40 + (i / 2) * 56;
-        b.frame = CGRectMake(x, y, sec.bounds.size.width / 2 - 12, 48);
-        [b setTitle:names[i] forState:UIControlStateNormal];
-        [b setTitleColor:gAccent forState:UIControlStateNormal];
-        b.titleLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightSemibold];
-        b.backgroundColor = gAccentSoft;
-        b.layer.cornerRadius = 10;
-        b.layer.borderWidth = 1;
-        b.layer.borderColor = gAccent.CGColor;
-        b.tag = i;
-        [b addTarget:self action:@selector(themeTapped:) forControlEvents:UIControlEventTouchUpInside];
-        [sec addSubview:b];
+    if (toggle) {
+        PSYCheck *chk = [[PSYCheck alloc] init];
+        chk.center = CGPointMake(card.bounds.size.width - 20, 15);
+        [card addSubview:chk];
     }
+    return card;
 }
 
-- (void)themeTapped:(UIButton *)b {
-    NSArray *keys = @[@"bw", @"blue", @"red", @"neon"];
-    applyTheme(keys[b.tag]);
-    [[NSNotificationCenter defaultCenter] postNotificationName:kThemeChanged object:nil];
+- (void)statBox:(NSString *)title value:(NSString *)value x:(CGFloat)x y:(CGFloat)y w:(CGFloat)w in:(UIView *)parent {
+    UIView *b = [[UIView alloc] initWithFrame:CGRectMake(x, y, w, 46)];
+    b.backgroundColor = [UIColor colorWithWhite:0.12 alpha:0.85];
+    b.layer.cornerRadius = 8;
+    b.layer.borderWidth = 1;
+    b.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.1].CGColor;
+    [parent addSubview:b];
+
+    UILabel *k = [[UILabel alloc] initWithFrame:CGRectMake(8, 6, w - 16, 12)];
+    k.text = title;
+    k.textColor = C_muted;
+    k.font = [UIFont systemFontOfSize:6];
+    [b addSubview:k];
+
+    UILabel *v = [[UILabel alloc] initWithFrame:CGRectMake(8, 22, w - 16, 18)];
+    v.text = value;
+    v.textColor = [UIColor whiteColor];
+    v.font = [UIFont boldSystemFontOfSize:14];
+    [b addSubview:v];
 }
 
-- (void)dealloc {
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
+- (void)colorSquare:(UIColor *)color x:(CGFloat)x y:(CGFloat)y in:(UIView *)parent active:(BOOL)active {
+    UIView *sq = [[UIView alloc] initWithFrame:CGRectMake(x, y, 16, 16)];
+    sq.backgroundColor = color;
+    sq.layer.cornerRadius = 6;
+    sq.layer.borderWidth = active ? 2 : 1;
+    sq.layer.borderColor = active ? [UIColor whiteColor].CGColor : [UIColor colorWithWhite:1 alpha:0.1].CGColor;
+    if (active) {
+        sq.layer.shadowColor = [UIColor whiteColor].CGColor;
+        sq.layer.shadowRadius = 6;
+        sq.layer.shadowOpacity = 0.5;
+        sq.layer.shadowOffset = CGSizeZero;
+    }
+    [parent addSubview:sq];
 }
+
+- (UIButton *)actionBtn:(NSString *)title x:(CGFloat)x y:(CGFloat)y w:(CGFloat)w in:(UIView *)parent {
+    UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
+    b.frame = CGRectMake(x, y, w, 26);
+    [b setTitle:title forState:UIControlStateNormal];
+    [b setTitleColor:C_grey forState:UIControlStateNormal];
+    b.titleLabel.font = [UIFont boldSystemFontOfSize:7];
+    b.backgroundColor = [UIColor colorWithWhite:1 alpha:0.04];
+    b.layer.cornerRadius = 7;
+    b.layer.borderWidth = 1;
+    b.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.13].CGColor;
+    [parent addSubview:b];
+    return b;
+}
+
+// ============ СТРАНИЦЫ ============
+
+- (void)buildHome:(UIView *)page {
+    [self sectionTitle:@"LIVE PERFORMANCE" y:8 in:page];
+    CGFloat w = (page.bounds.size.width - 32) / 2;
+    [self statBox:@"FPS" value:@"60" x:8 y:26 w:w in:page];
+    [self statBox:@"FRAME TIME" value:@"16ms" x:16 + w y:26 w:w in:page];
+    [self statBox:@"OVERLAY FPS" value:@"60" x:8 y:78 w:w in:page];
+    [self statBox:@"UPTIME" value:@"0s" x:16 + w y:78 w:w in:page];
+
+    [self sectionTitle:@"SYSTEM" y:136 in:page];
+    [self cardRow:@"Resolution   390×844" y:154 in:page toggle:NO];
+    [self cardRow:@"Orientation  LANDSCAPE" y:186 in:page toggle:NO];
+
+    [self sectionTitle:@"QUICK PRESET" y:224 in:page];
+    CGFloat bw = (page.bounds.size.width - 32) / 3;
+    [self actionBtn:@"LOW" x:8 y:242 w:bw in:page];
+    [self actionBtn:@"BALANCED" x:12 + bw y:242 w:bw in:page];
+    [self actionBtn:@"QUALITY" x:16 + 2*bw y:242 w:bw in:page];
+}
+
+- (void)buildESP:(UIView *)page {
+    [self sectionTitle:@"ESP MASTER" y:8 in:page];
+    [self cardRow:@"Enable" y:26 in:page toggle:YES];
+    [self cardRow:@"Box" y:58 in:page toggle:YES];
+    [self cardRow:@"Line" y:90 in:page toggle:YES];
+    [self cardRow:@"Distance" y:122 in:page toggle:YES];
+    [self cardRow:@"HP Bar" y:154 in:page toggle:YES];
+
+    [self sectionTitle:@"BOX COLOR" y:192 in:page];
+    [self colorSquare:[UIColor colorWithRed:0.8 green:0.2 blue:0.2 alpha:1] x:12 y:210 in:page active:NO];
+    [self colorSquare:[UIColor colorWithRed:0.2 green:0.8 blue:0.2 alpha:1] x:34 y:210 in:page active:NO];
+    [self colorSquare:[UIColor colorWithRed:0.2 green:0.6 blue:1 alpha:1] x:56 y:210 in:page active:NO];
+    [self colorSquare:[UIColor colorWithRed:1 green:0.8 blue:0.2 alpha:1] x:78 y:210 in:page active:NO];
+    [self colorSquare:[UIColor whiteColor] x:100 y:210 in:page active:YES];
+}
+
+- (void)buildAIM:(UIView *)page {
+    UIView *box = [[UIView alloc] initWithFrame:CGRectMake(12, page.bounds.size.height/2 - 50, page.bounds.size.width - 24, 100)];
+    box.backgroundColor = [UIColor colorWithWhite:0.12 alpha:0.85];
+    box.layer.cornerRadius = 10;
+    box.layer.borderWidth = 1;
+    box.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.1].CGColor;
+    [page addSubview:box];
+
+    UILabel *t = [[UILabel alloc] initWithFrame:CGRectMake(0, 20, box.bounds.size.width, 20)];
+    t.text = @"ВРЕМЕННО НЕ РАБОТАЕТ";
+    t.textColor = [UIColor whiteColor];
+    t.font = [UIFont boldSystemFontOfSize:10];
+    t.textAlignment = NSTextAlignmentCenter;
+    [box addSubview:t];
+
+    UILabel *s = [[UILabel alloc] initWithFrame:CGRectMake(20, 48, box.bounds.size.width - 40, 40)];
+    s.text = @"Пожалуйста, не пишите в ЛС. Мы сообщим, когда функция снова будет доступна.";
+    s.textColor = C_muted;
+    s.font = [UIFont systemFontOfSize:8];
+    s.numberOfLines = 0;
+    s.textAlignment = NSTextAlignmentCenter;
+    [box addSubview:s];
+}
+
+- (void)buildPerf:(UIView *)page {
+    [self sectionTitle:@"FRAME MONITOR" y:8 in:page];
+    CGFloat w = (page.bounds.size.width - 32) / 2;
+    [self statBox:@"FPS" value:@"60" x:8 y:26 w:w in:page];
+    [self statBox:@"FRAME TIME" value:@"16ms" x:16 + w y:26 w:w in:page];
+
+    [self sectionTitle:@"LOAD REDUCTION" y:84 in:page];
+    [self cardRow:@"Low Load Mode" y:102 in:page toggle:YES];
+
+    [self sectionTitle:@"OVERLAY RATE" y:142 in:page];
+    [self cardRow:@"Refresh 60 FPS" y:160 in:page toggle:NO];
+
+    [self sectionTitle:@"ACTIONS" y:200 in:page];
+    CGFloat bw = (page.bounds.size.width - 32) / 3;
+    [self actionBtn:@"RECENTER" x:8 y:218 w:bw in:page];
+    [self actionBtn:@"CLEAR" x:12 + bw y:218 w:bw in:page];
+    [self actionBtn:@"SAVE" x:16 + 2*bw y:218 w:bw in:page];
+}
+
+- (void)buildConfig:(UIView *)page {
+    [self sectionTitle:@"PROFILES" y:8 in:page];
+    [self actionBtn:@"SAVE 1" x:12 y:26 w:80 in:page];
+    [self actionBtn:@"LOAD 1" x:96 y:26 w:80 in:page];
+    [self actionBtn:@"DEL 1" x:180 y:26 w:60 in:page];
+    [self actionBtn:@"SAVE 2" x:12 y:58 w:80 in:page];
+    [self actionBtn:@"LOAD 2" x:96 y:58 w:80 in:page];
+    [self actionBtn:@"DEL 2" x:180 y:58 w:60 in:page];
+    [self actionBtn:@"SAVE 3" x:12 y:90 w:80 in:page];
+    [self actionBtn:@"LOAD 3" x:96 y:90 w:80 in:page];
+    [self actionBtn:@"DEL 3" x:180 y:90 w:60 in:page];
+
+    [self sectionTitle:@"UI" y:132 in:page];
+    [self cardRow:@"Vibration" y:150 in:page toggle:YES];
+    [self cardRow:@"Sound" y:182 in:page toggle:YES];
+    [self cardRow:@"Hit Sound" y:214 in:page toggle:YES];
+
+    [self actionBtn:@"SAVE ALL" x:12 y:252 w:page.bounds.size.width - 24 in:page];
+}
+
 @end
 
 // ============================================================
 // ИНИЦИАЛИЗАЦИЯ
 // ============================================================
 __attribute__((constructor))
-static void psy_init(void) {
-    applyTheme(@"red");
+static void init(void) {
+    initColors();
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC),
                    dispatch_get_main_queue(), ^{
-        static PSYCircleButton *circle = nil;
-        static PSYMenuWindow *menu = nil;
-        static PSYTopHUD *hud = nil;
-        if (!circle) circle = [[PSYCircleButton alloc] init];
-        if (!menu)   menu   = [[PSYMenuWindow alloc] init];
-        if (!hud)    hud    = [[PSYTopHUD alloc] init];
+        static PSYCircle *circle = nil;
+        static PSYMenu *menu = nil;
+        static PSYHUD *hud = nil;
+        if (!circle) circle = [[PSYCircle alloc] init];
+        if (!menu)   menu   = [[PSYMenu alloc] init];
+        if (!hud)    hud    = [[PSYHUD alloc] init];
         (void)circle; (void)menu; (void)hud;
     });
 }
