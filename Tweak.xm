@@ -31,7 +31,7 @@ static void applyTheme(NSString *name) {
     gBg = [UIColor blackColor];
 }
 
-static NSString *const kThemeChanged = @"
+static NSString *const kThemeChanged = @"PSYThemeChanger";
 // ============================================================
 // ТУМБЛЕР
 // ============================================================
