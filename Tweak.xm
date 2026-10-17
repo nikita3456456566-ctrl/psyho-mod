@@ -1,4 +1,5 @@
 #import <UIKit/UIKit.h>
+#import "PSYESP.h"
 
 // ============================================================
 // ЦВЕТА
@@ -528,6 +529,12 @@ typedef NS_ENUM(NSInteger, PSYWeatherType) {
 
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(toggleMenu) name:@"PSYToggle" object:nil];
 
+       // Добавляем ESP в главное окно, чтобы он не скрывался вместе с меню
+        UIWindow *mainWin = [UIApplication sharedApplication].keyWindow;
+        if (!mainWin) mainWin = self; 
+        [[PSYESP shared] setFrame:mainWin.bounds];
+        [mainWin addSubview:[PSYESP shared]];
+        [[PSYESP shared] start]; 
         self.hidden = YES;
     }
     return self;
