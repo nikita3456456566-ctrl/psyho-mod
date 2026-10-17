@@ -4,6 +4,7 @@
 #import "PSYMath.hpp"
 #import <mach-o/dyld.h>
 #import <QuartzCore/QuartzCore.h>
+#include <string>
 
 using namespace PSY;
 
