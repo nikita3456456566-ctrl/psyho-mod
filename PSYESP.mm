@@ -48,6 +48,7 @@ std::string ReadFString(uint64_t address) {
 
 // --- Основной класс ---
 @interface PSYESP ()
+@property (nonatomic, assign) int frameCounter;
 @property (nonatomic, strong) CADisplayLink *displayLink;
 @property (nonatomic, strong) NSMutableArray<ESPPlayerUI*> *uiPool;
 @property (nonatomic, assign) uint64_t gameBase;
@@ -148,7 +149,10 @@ std::string ReadFString(uint64_t address) {
 }
 
 - (void)tick {
-    // Скрываем все перед обновлением
+    // АНТИБАН: обновляем ESP только раз в 4 кадра (~15 FPS вместо 60)
+    self.frameCounter++;
+    if (self.frameCounter % 4 != 0) return;
+
     for (ESPPlayerUI *ui in self.uiPool) {
         ui.boxLayer.hidden = YES;
         ui.lineLayer.hidden = YES;
