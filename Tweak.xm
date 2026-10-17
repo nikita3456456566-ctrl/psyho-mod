@@ -530,8 +530,15 @@ typedef NS_ENUM(NSInteger, PSYWeatherType) {
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(toggleMenu) name:@"PSYToggle" object:nil];
 
        // Добавляем ESP в главное окно, чтобы он не скрывался вместе с меню
-        UIWindow *mainWin = [UIApplication sharedApplication].keyWindow;
-        if (!mainWin) mainWin = self; 
+        UIWindow *mainWin = nil;
+        for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
+            if ([scene isKindOfClass:[UIWindowScene class]]) {
+                for (UIWindow *window in ((UIWindowScene *)scene).windows) {
+                    if (window.isKeyWindow) { mainWin = window; break; }
+                }
+            }
+        }
+        if (!mainWin) mainWin = self;
         [[PSYESP shared] setFrame:mainWin.bounds];
         [mainWin addSubview:[PSYESP shared]];
         [[PSYESP shared] start]; 
