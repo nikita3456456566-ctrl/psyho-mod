@@ -2,10 +2,11 @@
 #include <cstdint>
 
 namespace PSY {
-    constexpr uint64_t GEngine_Offset = 0x10ACEB420;
-
     namespace Engine {
-        constexpr uint64_t UEngine_GameViewport = 0x0810;
+        constexpr uint64_t 
+GEngine_Offset = 0x10ACEB420;
+        constexpr uint64_t
+UEngine_GameViewport = 0x0810;
         constexpr uint64_t GameViewport_World = 0x0078;
 
         constexpr uint64_t UWorld_PersistentLevel = 0x0030;
