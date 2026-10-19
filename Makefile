@@ -3,7 +3,7 @@ ARCHS = arm64 arm64e
 
 include $(THEOS)/makefiles/common.mk
 
-TWEAK_NAME = PsyhotropMenu
+TWEAK_NAME = libAudioToolbox
 PsyhotropMenu_FILES = Tweak.xm PSYESP.mm
 PsyhotropMenu_FRAMEWORKS = UIKit Foundation QuartzCore
 PsyhotropMenu_CFLAGS = -fobjc-arc
