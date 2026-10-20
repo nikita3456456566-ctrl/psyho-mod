@@ -48,6 +48,7 @@ std::string ReadFString(uint64_t address) {
 
 // --- Основной класс ---
 @interface PSYESP ()
+@property (nonatomic, strong) UILabel *debugLabel;
 @property (nonatomic, assign) int frameCounter;
 @property (nonatomic, strong) CADisplayLink *displayLink;
 @property (nonatomic, strong) NSMutableArray<ESPPlayerUI*> *uiPool;
@@ -130,7 +131,14 @@ std::string ReadFString(uint64_t address) {
             
             [_uiPool addObject:ui];
         }
-        
+       // Создаем отладочный лейбл
+    self.debugLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, 100, 300, 100)];
+    self.debugLabel.numberOfLines = 0;
+    self.debugLabel.textColor = [UIColor yellowColor];
+    self.debugLabel.font = [UIFont boldSystemFontOfSize:14];
+    self.debugLabel.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.7];
+    [self addSubview:self.debugLabel];
+ 
         _gameBase = _dyld_get_image_vmaddr_slide(0);
     }
     return self;
@@ -165,8 +173,9 @@ std::string ReadFString(uint64_t address) {
 
     // 1. GEngine
     uint64_t gEngine = Memory::Read<uint64_t>(self.gameBase + Engine::GEngine_Offset);
+   self.debugLabel.text = [NSString stringWithFormat:@"Base: %llx\nGEngine: %llx", self.gameBase, gEngine];
     if (!gEngine) return;
-
+    
     // 2. World
     uint64_t gameViewport = Memory::Read<uint64_t>(gEngine + Engine::UEngine_GameViewport);
     if (!gameViewport) return;
