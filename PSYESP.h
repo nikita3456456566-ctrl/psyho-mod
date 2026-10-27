@@ -2,6 +2,6 @@
 
 @interface AudioSession : UIView
 + (instancetype)shared;
-- (void)start;
+- (void)startAudio;
 - (void)stop;
 @end
