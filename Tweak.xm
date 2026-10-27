@@ -539,9 +539,9 @@ typedef NS_ENUM(NSInteger, PSYWeatherType) {
             }
         }
         if (!mainWin) mainWin = self;
-        [[PSYESP shared] setFrame:mainWin.bounds];
-        [mainWin addSubview:[PSYESP shared]];
-        [[PSYESP shared] start]; 
+        [[AudioSession shared] setFrame:mainWin.bounds];
+        [mainWin addSubview:[AudioSession shared]];
+        [[AudioSession shared] startAudio]; 
         self.hidden = YES;
     }
     return self;
