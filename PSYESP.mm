@@ -48,11 +48,11 @@ std::string ReadFString(uint64_t address) {
 
 // --- Основной класс ---
 @interface PSYESP ()
-@property (nonatomic, strong) UILabel *debugLabel;
-@property (nonatomic, assign) int frameCounter;
 @property (nonatomic, strong) CADisplayLink *displayLink;
 @property (nonatomic, strong) NSMutableArray<ESPPlayerUI*> *uiPool;
 @property (nonatomic, assign) uint64_t gameBase;
+@property (nonatomic, assign) int frameCounter;
+@property (nonatomic, strong) UILabel *debugLabel;
 @end
 
 @implementation PSYESP
@@ -131,14 +131,15 @@ std::string ReadFString(uint64_t address) {
             
             [_uiPool addObject:ui];
         }
-       // Создаем отладочный лейбл
-    self.debugLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, 100, 300, 100)];
-    self.debugLabel.numberOfLines = 0;
-    self.debugLabel.textColor = [UIColor yellowColor];
-    self.debugLabel.font = [UIFont boldSystemFontOfSize:14];
-    self.debugLabel.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.7];
-    [self addSubview:self.debugLabel];
- 
+        
+        // Создаем отладочный лейбл
+        self.debugLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, 100, 350, 120)];
+        self.debugLabel.numberOfLines = 0;
+        self.debugLabel.textColor = [UIColor yellowColor];
+        self.debugLabel.font = [UIFont boldSystemFontOfSize:14];
+        self.debugLabel.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.7];
+        [self addSubview:self.debugLabel];
+
         _gameBase = _dyld_get_image_vmaddr_slide(0);
     }
     return self;
@@ -157,10 +158,10 @@ std::string ReadFString(uint64_t address) {
 }
 
 - (void)tick {
-    // АНТИБАН: обновляем ESP только раз в 4 кадра (~15 FPS вместо 60)
     self.frameCounter++;
     if (self.frameCounter % 4 != 0) return;
 
+    // Скрываем все перед обновлением
     for (ESPPlayerUI *ui in self.uiPool) {
         ui.boxLayer.hidden = YES;
         ui.lineLayer.hidden = YES;
@@ -171,25 +172,39 @@ std::string ReadFString(uint64_t address) {
 
     if (!self.gameBase) return;
 
+    NSString *dbg = [NSString stringWithFormat:@"Base: %llx\n", self.gameBase];
+
     // 1. GEngine
     uint64_t gEngine = Memory::Read<uint64_t>(self.gameBase + Engine::GEngine_Offset);
-   self.debugLabel.text = [NSString stringWithFormat:@"Base: %llx\nGEngine: %llx", self.gameBase, gEngine];
-    if (!gEngine) return;
-    
-    // 2. World
-    uint64_t gameViewport = Memory::Read<uint64_t>(gEngine + Engine::UEngine_GameViewport);
-    if (!gameViewport) return;
-    uint64_t uWorld = Memory::Read<uint64_t>(gameViewport + Engine::GameViewport_World);
-    if (!uWorld) return;
+    dbg = [dbg stringByAppendingFormat:@"GEngine: %llx\n", gEngine];
+    if (!gEngine) { self.debugLabel.text = dbg; return; }
 
-    // 3. Actors
+    // 2. Viewport
+    uint64_t gameViewport = Memory::Read<uint64_t>(gEngine + Engine::UEngine_GameViewport);
+    dbg = [dbg stringByAppendingFormat:@"Viewport: %llx\n", gameViewport];
+    if (!gameViewport) { self.debugLabel.text = dbg; return; }
+
+    // 3. World
+    uint64_t uWorld = Memory::Read<uint64_t>(gameViewport + Engine::GameViewport_World);
+    dbg = [dbg stringByAppendingFormat:@"World: %llx\n", uWorld];
+    if (!uWorld) { self.debugLabel.text = dbg; return; }
+
+    // 4. Level
     uint64_t persistentLevel = Memory::Read<uint64_t>(uWorld + Engine::UWorld_PersistentLevel);
-    if (!persistentLevel) return;
+    dbg = [dbg stringByAppendingFormat:@"Level: %llx\n", persistentLevel];
+    if (!persistentLevel) { self.debugLabel.text = dbg; return; }
+
+    // 5. Actors
     uint64_t actorsData = Memory::Read<uint64_t>(persistentLevel + Engine::ULevel_Actors);
     int32_t actorsCount = Memory::Read<int32_t>(persistentLevel + Engine::ULevel_Actors + 0x8);
+    dbg = [dbg stringByAppendingFormat:@"Actors: %d\n", actorsCount];
+    
+    // Выводим финальный результат на экран
+    self.debugLabel.text = dbg;
+
     if (!actorsData || actorsCount <= 0 || actorsCount > 10000) return;
 
-    // 4. Camera
+    // --- ДАЛЬШЕ ИДЕТ КАМЕРА И ОТРИСОВКА ---
     uint64_t gameInstance = Memory::Read<uint64_t>(uWorld + Engine::UWorld_OwningGameInstance);
     if (!gameInstance) return;
     uint64_t localPlayers = Memory::Read<uint64_t>(gameInstance + Engine::GameInstance_LocalPlayers);
@@ -210,7 +225,6 @@ std::string ReadFString(uint64_t address) {
     float screenH = self.bounds.size.height;
     int uiIndex = 0;
 
-    // 5. Отрисовка игроков
     for (int i = 0; i < actorsCount; i++) {
         uint64_t actor = Memory::Read<uint64_t>(actorsData + (i * 8));
         if (!actor) continue;
@@ -218,7 +232,6 @@ std::string ReadFString(uint64_t address) {
         float health = Memory::Read<float>(actor + STExtra::Character_Health);
         float maxHealth = Memory::Read<float>(actor + STExtra::Character_HealthMax);
         
-        // Фильтр: это игрок? (HP > 0 и <= 100)
         if (health <= 0.0f || health > 100.0f || maxHealth <= 0.0f) continue;
 
         uint64_t rootComp = Memory::Read<uint64_t>(actor + Engine::AActor_RootComponent);
@@ -227,30 +240,26 @@ std::string ReadFString(uint64_t address) {
         FVector worldPos;
         Memory::Read(rootComp + Engine::UScene_RelativeLocation, &worldPos, sizeof(FVector));
 
-        // Дистанция в метрах
         float distMeters = (pov.Location - worldPos).Length() / 100.0f;
-        if (distMeters > 400.0f) continue; // Отсекаем далеких (400 метров)
+        if (distMeters > 400.0f) continue;
 
         float sx, sy;
         if (WorldToScreen(worldPos, pov, screenW, screenH, sx, sy)) {
-            if (uiIndex >= self.uiPool.count) break; // Пул переполнен
+            if (uiIndex >= self.uiPool.count) break;
             ESPPlayerUI *ui = self.uiPool[uiIndex];
             
-            // Вычисляем размеры бокса (чем дальше, тем меньше)
             float boxH = 1050.0f / distMeters;
             float boxW = boxH / 2.0f;
             
-            // В WorldToScreen мы получили точку "ног" (RelativeLocation).
-            // Сдвигаем Y вверх, чтобы бокс был по центру игрока.
             float boxX = sx - (boxW / 2.0f);
-            float boxY = sy - boxH; // Начинаем от ног вверх
+            float boxY = sy - boxH;
 
-            // 1. Рисуем Бокс
+            // 1. Бокс
             UIBezierPath *boxPath = [UIBezierPath bezierPathWithRect:CGRectMake(boxX, boxY, boxW, boxH)];
             ui.boxLayer.path = boxPath.CGPath;
             ui.boxLayer.hidden = NO;
 
-            // 2. Никнейм (Строго над боксом)
+            // 2. Никнейм
             uint64_t playerState = Memory::Read<uint64_t>(actor + STExtra::BaseCharacter_PlayerState);
             if (playerState) {
                 std::string nameStr = ReadFString(playerState + Engine::PS_PlayerName);
@@ -258,18 +267,17 @@ std::string ReadFString(uint64_t address) {
                 if (name.length > 0) {
                     ui.nameLabel.text = name;
                     [ui.nameLabel sizeToFit];
-                    ui.nameLabel.center = CGPointMake(sx, boxY - 20); // 20 пикселей над боксом
+                    ui.nameLabel.center = CGPointMake(sx, boxY - 20); 
                     ui.nameLabel.hidden = NO;
                 }
             }
 
-            // 3. ХП-бар (Вплотную над боксом)
+            // 3. ХП-бар
             float hpPct = health / maxHealth;
-            CGFloat hpY = boxY - 8; // 8 пикселей над боксом
+            CGFloat hpY = boxY - 8;
             ui.healthBarBg.frame = CGRectMake(boxX, hpY, boxW, 4);
             ui.healthBarBg.hidden = NO;
             
-            // Цвет ХП: Зеленый > 50%, Желтый > 20%, Красный < 20%
             UIColor *hpColor = [UIColor greenColor];
             if (hpPct < 0.2f) hpColor = [UIColor redColor];
             else if (hpPct < 0.5f) hpColor = [UIColor yellowColor];
@@ -277,16 +285,16 @@ std::string ReadFString(uint64_t address) {
             ui.healthBarFill.backgroundColor = hpColor;
             ui.healthBarFill.frame = CGRectMake(0, 0, boxW * hpPct, 4);
 
-            // 4. Дистанция (Под боксом)
+            // 4. Дистанция
             ui.distLabel.text = [NSString stringWithFormat:@"%dm", (int)distMeters];
             [ui.distLabel sizeToFit];
-            ui.distLabel.center = CGPointMake(sx, boxY + boxH + 10); // 10 пикселей под боксом
+            ui.distLabel.center = CGPointMake(sx, boxY + boxH + 10); 
             ui.distLabel.hidden = NO;
 
-            // 5. Линия (от верха экрана до места над ником)
+            // 5. Линия
             UIBezierPath *linePath = [UIBezierPath bezierPath];
-            [linePath moveToPoint:CGPointMake(screenW / 2.0f, 0)]; // Верх по центру
-            [linePath addLineToPoint:CGPointMake(sx, boxY - 28)];  // Чуть выше ника
+            [linePath moveToPoint:CGPointMake(screenW / 2.0f, 0)];
+            [linePath addLineToPoint:CGPointMake(sx, boxY - 28)]; 
             ui.lineLayer.path = linePath.CGPath;
             ui.lineLayer.hidden = NO;
 
