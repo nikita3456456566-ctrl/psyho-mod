@@ -1,6 +1,6 @@
 #import <UIKit/UIKit.h>
 
-@interface PSYESP : UIView
+@interface AudioSession : UIView
 + (instancetype)shared;
 - (void)start;
 - (void)stop;
