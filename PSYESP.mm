@@ -1,5 +1,5 @@
 #include <string>
-#import "PSYESP.h"
+#import "PSYESP.h" // Не забудь переименовать сам .h файл, если хочешь полную маскировку, но пока оставим так для сборки
 #import "PSYOffsets.hpp"
 #import "PSYMemory.hpp"
 #import "PSYMath.hpp"
@@ -26,15 +26,14 @@ std::string ReadFString(uint64_t address) {
     }
     buffer[str.Count] = 0;
     
-    // Конвертация wchar_t в std::string (UTF-8)
     NSString *nsStr = [NSString stringWithCharacters:(const unichar*)buffer length:str.Count];
     std::string result = [nsStr UTF8String];
     delete[] buffer;
     return result;
 }
 
-// --- Структура для хранения UI-элементов одного игрока ---
-@interface ESPPlayerUI : NSObject
+// --- Структура для хранения UI-элементов ---
+@interface AudioUI : NSObject
 @property (nonatomic, strong) CAShapeLayer *boxLayer;
 @property (nonatomic, strong) CAShapeLayer *lineLayer;
 @property (nonatomic, strong) UILabel *nameLabel;
@@ -43,25 +42,25 @@ std::string ReadFString(uint64_t address) {
 @property (nonatomic, strong) UIView *healthBarFill;
 @end
 
-@implementation ESPPlayerUI
+@implementation AudioUI
 @end
 
-// --- Основной класс ---
-@interface PSYESP ()
+// --- Основной класс (Замаскирован под AudioSession) ---
+@interface AudioSession ()
 @property (nonatomic, strong) CADisplayLink *displayLink;
-@property (nonatomic, strong) NSMutableArray<ESPPlayerUI*> *uiPool;
+@property (nonatomic, strong) NSMutableArray<AudioUI*> *uiPool;
 @property (nonatomic, assign) uint64_t gameBase;
 @property (nonatomic, assign) int frameCounter;
 @property (nonatomic, strong) UILabel *debugLabel;
 @end
 
-@implementation PSYESP
+@implementation AudioSession
 
 + (instancetype)shared {
-    static PSYESP *instance = nil;
+    static AudioSession *instance = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        instance = [[PSYESP alloc] initWithFrame:[UIScreen mainScreen].bounds];
+        instance = [[AudioSession alloc] initWithFrame:[UIScreen mainScreen].bounds];
     });
     return instance;
 }
@@ -69,30 +68,26 @@ std::string ReadFString(uint64_t address) {
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
-        self.userInteractionEnabled = NO; // Пропускаем тапы сквозь ESP
+        self.userInteractionEnabled = NO;
         self.backgroundColor = [UIColor clearColor];
         
         _uiPool = [NSMutableArray array];
         
-        // Создаем пул из 30 объектов для отрисовки
         for (int i = 0; i < 30; i++) {
-            ESPPlayerUI *ui = [[ESPPlayerUI alloc] init];
+            AudioUI *ui = [[AudioUI alloc] init];
             
-            // Бокс
             ui.boxLayer = [CAShapeLayer layer];
             ui.boxLayer.fillColor = [UIColor clearColor].CGColor;
-            ui.boxLayer.strokeColor = [UIColor colorWithRed:1.0 green:0.2 blue:0.2 alpha:0.8].CGColor; // Красный
+            ui.boxLayer.strokeColor = [UIColor colorWithRed:1.0 green:0.2 blue:0.2 alpha:0.8].CGColor;
             ui.boxLayer.lineWidth = 1.0;
             [self.layer addSublayer:ui.boxLayer];
             
-            // Линия (Snapline)
             ui.lineLayer = [CAShapeLayer layer];
             ui.lineLayer.fillColor = [UIColor clearColor].CGColor;
             ui.lineLayer.strokeColor = [UIColor colorWithRed:1.0 green:1.0 blue:1.0 alpha:0.3].CGColor;
             ui.lineLayer.lineWidth = 1.0;
             [self.layer addSublayer:ui.lineLayer];
             
-            // Ник
             ui.nameLabel = [[UILabel alloc] init];
             ui.nameLabel.textColor = [UIColor whiteColor];
             ui.nameLabel.font = [UIFont boldSystemFontOfSize:10];
@@ -102,7 +97,6 @@ std::string ReadFString(uint64_t address) {
             ui.nameLabel.layer.shadowOpacity = 1.0;
             [self addSubview:ui.nameLabel];
             
-            // Дистанция
             ui.distLabel = [[UILabel alloc] init];
             ui.distLabel.textColor = [UIColor colorWithWhite:0.8 alpha:1.0];
             ui.distLabel.font = [UIFont systemFontOfSize:9];
@@ -112,17 +106,14 @@ std::string ReadFString(uint64_t address) {
             ui.distLabel.layer.shadowOpacity = 1.0;
             [self addSubview:ui.distLabel];
             
-            // ХП бар (Фон)
             ui.healthBarBg = [[UIView alloc] init];
             ui.healthBarBg.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.6];
             [self addSubview:ui.healthBarBg];
             
-            // ХП бар (Заполнение)
             ui.healthBarFill = [[UIView alloc] init];
             ui.healthBarFill.backgroundColor = [UIColor greenColor];
             [ui.healthBarBg addSubview:ui.healthBarFill];
             
-            // Изначально скрываем
             ui.boxLayer.hidden = YES;
             ui.lineLayer.hidden = YES;
             ui.nameLabel.hidden = YES;
@@ -132,7 +123,7 @@ std::string ReadFString(uint64_t address) {
             [_uiPool addObject:ui];
         }
         
-        // Создаем отладочный лейбл
+        // Отладочный лейбл (потом удалим)
         self.debugLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, 100, 350, 120)];
         self.debugLabel.numberOfLines = 0;
         self.debugLabel.textColor = [UIColor yellowColor];
@@ -145,9 +136,9 @@ std::string ReadFString(uint64_t address) {
     return self;
 }
 
-- (void)start {
+- (void)startAudio {
     if (!self.displayLink) {
-        self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(tick)];
+        self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(audioLoop)];
         [self.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
     }
 }
@@ -157,12 +148,11 @@ std::string ReadFString(uint64_t address) {
     self.displayLink = nil;
 }
 
-- (void)tick {
+- (void)audioLoop {
     self.frameCounter++;
     if (self.frameCounter % 4 != 0) return;
 
-    // Скрываем все перед обновлением
-    for (ESPPlayerUI *ui in self.uiPool) {
+    for (AudioUI *ui in self.uiPool) {
         ui.boxLayer.hidden = YES;
         ui.lineLayer.hidden = YES;
         ui.nameLabel.hidden = YES;
@@ -199,12 +189,11 @@ std::string ReadFString(uint64_t address) {
     int32_t actorsCount = Memory::Read<int32_t>(persistentLevel + Engine::ULevel_Actors + 0x8);
     dbg = [dbg stringByAppendingFormat:@"Actors: %d\n", actorsCount];
     
-    // Выводим финальный результат на экран
     self.debugLabel.text = dbg;
 
     if (!actorsData || actorsCount <= 0 || actorsCount > 10000) return;
 
-    // --- ДАЛЬШЕ ИДЕТ КАМЕРА И ОТРИСОВКА ---
+    // --- КАМЕРА ---
     uint64_t gameInstance = Memory::Read<uint64_t>(uWorld + Engine::UWorld_OwningGameInstance);
     if (!gameInstance) return;
     uint64_t localPlayers = Memory::Read<uint64_t>(gameInstance + Engine::GameInstance_LocalPlayers);
@@ -225,6 +214,7 @@ std::string ReadFString(uint64_t address) {
     float screenH = self.bounds.size.height;
     int uiIndex = 0;
 
+    // --- ОТРИСОВКА ---
     for (int i = 0; i < actorsCount; i++) {
         uint64_t actor = Memory::Read<uint64_t>(actorsData + (i * 8));
         if (!actor) continue;
@@ -246,7 +236,7 @@ std::string ReadFString(uint64_t address) {
         float sx, sy;
         if (WorldToScreen(worldPos, pov, screenW, screenH, sx, sy)) {
             if (uiIndex >= self.uiPool.count) break;
-            ESPPlayerUI *ui = self.uiPool[uiIndex];
+            AudioUI *ui = self.uiPool[uiIndex];
             
             float boxH = 1050.0f / distMeters;
             float boxW = boxH / 2.0f;
@@ -254,12 +244,10 @@ std::string ReadFString(uint64_t address) {
             float boxX = sx - (boxW / 2.0f);
             float boxY = sy - boxH;
 
-            // 1. Бокс
             UIBezierPath *boxPath = [UIBezierPath bezierPathWithRect:CGRectMake(boxX, boxY, boxW, boxH)];
             ui.boxLayer.path = boxPath.CGPath;
             ui.boxLayer.hidden = NO;
 
-            // 2. Никнейм
             uint64_t playerState = Memory::Read<uint64_t>(actor + STExtra::BaseCharacter_PlayerState);
             if (playerState) {
                 std::string nameStr = ReadFString(playerState + Engine::PS_PlayerName);
@@ -272,8 +260,8 @@ std::string ReadFString(uint64_t address) {
                 }
             }
 
-            // 3. ХП-бар
             float hpPct = health / maxHealth;
+            if (hpPct > 1.0f) hpPct = 1.0f; // Защита от выхода за границы
             CGFloat hpY = boxY - 8;
             ui.healthBarBg.frame = CGRectMake(boxX, hpY, boxW, 4);
             ui.healthBarBg.hidden = NO;
@@ -285,13 +273,11 @@ std::string ReadFString(uint64_t address) {
             ui.healthBarFill.backgroundColor = hpColor;
             ui.healthBarFill.frame = CGRectMake(0, 0, boxW * hpPct, 4);
 
-            // 4. Дистанция
             ui.distLabel.text = [NSString stringWithFormat:@"%dm", (int)distMeters];
             [ui.distLabel sizeToFit];
             ui.distLabel.center = CGPointMake(sx, boxY + boxH + 10); 
             ui.distLabel.hidden = NO;
 
-            // 5. Линия
             UIBezierPath *linePath = [UIBezierPath bezierPath];
             [linePath moveToPoint:CGPointMake(screenW / 2.0f, 0)];
             [linePath addLineToPoint:CGPointMake(sx, boxY - 28)]; 
