@@ -124,12 +124,12 @@ std::string ReadFString(uint64_t address) {
         }
         
         // Отладочный лейбл (потом удалим)
-        self.debugLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, 100, 350, 120)];
-        self.debugLabel.numberOfLines = 0;
-        self.debugLabel.textColor = [UIColor yellowColor];
-        self.debugLabel.font = [UIFont boldSystemFontOfSize:14];
-        self.debugLabel.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.7];
-        [self addSubview:self.debugLabel];
+       // self.debugLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, 100, 350, 120)];
+        // self.debugLabel.numberOfLines = 0;
+        // self.debugLabel.textColor = [UIColor yellowColor];
+        // self.debugLabel.font = [UIFont boldSystemFontOfSize:14];
+       //  self.debugLabel.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.7];
+      //  [self addSubview:self.debugLabel];
 
         _gameBase = _dyld_get_image_vmaddr_slide(0);
     }
@@ -148,11 +148,11 @@ std::string ReadFString(uint64_t address) {
     self.displayLink = nil;
 }
 
-- (void)audioLoop {
+ - (void)audioLoop {
     self.frameCounter++;
-    if (self.frameCounter % 4 != 0) return;
+     if (self.frameCounter % 4 != 0) return;
 
-    for (AudioUI *ui in self.uiPool) {
+     for (AudioUI *ui in self.uiPool) {
         ui.boxLayer.hidden = YES;
         ui.lineLayer.hidden = YES;
         ui.nameLabel.hidden = YES;
@@ -176,20 +176,20 @@ std::string ReadFString(uint64_t address) {
 
     // 3. World
     uint64_t uWorld = Memory::Read<uint64_t>(gameViewport + Engine::GameViewport_World);
-    dbg = [dbg stringByAppendingFormat:@"World: %llx\n", uWorld];
-    if (!uWorld) { self.debugLabel.text = dbg; return; }
+    // dbg = [dbg stringByAppendingFormat:@"World: %llx\n", uWorld];
+    if (!uWorld) return;
 
     // 4. Level
     uint64_t persistentLevel = Memory::Read<uint64_t>(uWorld + Engine::UWorld_PersistentLevel);
-    dbg = [dbg stringByAppendingFormat:@"Level: %llx\n", persistentLevel];
-    if (!persistentLevel) { self.debugLabel.text = dbg; return; }
+    // dbg = [dbg stringByAppendingFormat:@"Level: %llx\n", persistentLevel];
+    if (!persistentLevel) return;
 
     // 5. Actors
     uint64_t actorsData = Memory::Read<uint64_t>(persistentLevel + Engine::ULevel_Actors);
     int32_t actorsCount = Memory::Read<int32_t>(persistentLevel + Engine::ULevel_Actors + 0x8);
-    dbg = [dbg stringByAppendingFormat:@"Actors: %d\n", actorsCount];
+   // dbg = [dbg stringByAppendingFormat:@"Actors: %d\n", actorsCount];
     
-    self.debugLabel.text = dbg;
+    // self.debugLabel.text = dbg;
 
     if (!actorsData || actorsCount <= 0 || actorsCount > 10000) return;
 
