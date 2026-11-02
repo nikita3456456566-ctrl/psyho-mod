@@ -72,7 +72,15 @@ std::string ReadFString(uint64_t address) {
         self.backgroundColor = [UIColor clearColor];
         
         _uiPool = [NSMutableArray array];
-        
+        _gameBase = 0;
+        uint32_t count = _dyld_image_count();
+        for (uint32_t i = 0; i < count; i++) {
+            const char *name = _dyld_get_image_name(i);
+            if (name && (strstr(name, "com.tencent.ig") || strstr(name, "ShadowTrackerExtra"))) {
+                _gameBase = _dyld_get_image_vmaddr_slide(i);
+                break;
+            }
+        }
         for (int i = 0; i < 30; i++) {
             AudioUI *ui = [[AudioUI alloc] init];
             
