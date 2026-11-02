@@ -225,7 +225,7 @@ std::string ReadFString(uint64_t address) {
         Memory::Read(rootComp + Engine::UScene_RelativeLocation, &worldPos, sizeof(FVector));
 
         float distMeters = (pov.Location - worldPos).Length() / 100.0f;
-        if (distMeters > 400.0f) continue;
+if (distMeters > 400.0f || distMeters < 1.0f) continue;
 
         float sx, sy;
         if (WorldToScreen(worldPos, pov, screenW, screenH, sx, sy)) {
