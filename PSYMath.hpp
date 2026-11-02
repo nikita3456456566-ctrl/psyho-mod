@@ -43,6 +43,7 @@ static inline bool WorldToScreen(const FVector& world, const FMinimalViewInfo& p
 
     if (cam.X < 1.0f) return false;
 
+    if (pov.FOV <= 0.0f || pov.FOV > 180.0f) return false; // Защита от краша
     float fovRad = pov.FOV * 3.14159265f / 180.f;
     float focal = (screenH * 0.5f) / std::tan(fovRad * 0.5f);
 
