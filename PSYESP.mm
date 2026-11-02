@@ -123,14 +123,7 @@ std::string ReadFString(uint64_t address) {
             [_uiPool addObject:ui];
         }
         
-        // Отладочный лейбл (потом удалим)
-       // self.debugLabel = [[UILabel alloc] initWithFrame:CGRectMake(20, 100, 350, 120)];
-        // self.debugLabel.numberOfLines = 0;
-        // self.debugLabel.textColor = [UIColor yellowColor];
-        // self.debugLabel.font = [UIFont boldSystemFontOfSize:14];
-       //  self.debugLabel.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.7];
-      //  [self addSubview:self.debugLabel];
-
+       
         _gameBase = _dyld_get_image_vmaddr_slide(0);
     }
     return self;
@@ -162,34 +155,27 @@ std::string ReadFString(uint64_t address) {
 
     if (!self.gameBase) return;
 
-    NSString *dbg = [NSString stringWithFormat:@"Base: %llx\n", self.gameBase];
 
     // 1. GEngine
     uint64_t gEngine = Memory::Read<uint64_t>(self.gameBase + Engine::GEngine_Offset);
-    dbg = [dbg stringByAppendingFormat:@"GEngine: %llx\n", gEngine];
-    if (!gEngine) { self.debugLabel.text = dbg; return; }
+    if (!gEngine) return; 
 
     // 2. Viewport
     uint64_t gameViewport = Memory::Read<uint64_t>(gEngine + Engine::UEngine_GameViewport);
-    dbg = [dbg stringByAppendingFormat:@"Viewport: %llx\n", gameViewport];
-    if (!gameViewport) { self.debugLabel.text = dbg; return; }
+    if (!gameViewport) return; 
 
     // 3. World
     uint64_t uWorld = Memory::Read<uint64_t>(gameViewport + Engine::GameViewport_World);
-    // dbg = [dbg stringByAppendingFormat:@"World: %llx\n", uWorld];
     if (!uWorld) return;
 
     // 4. Level
     uint64_t persistentLevel = Memory::Read<uint64_t>(uWorld + Engine::UWorld_PersistentLevel);
-    // dbg = [dbg stringByAppendingFormat:@"Level: %llx\n", persistentLevel];
     if (!persistentLevel) return;
 
     // 5. Actors
     uint64_t actorsData = Memory::Read<uint64_t>(persistentLevel + Engine::ULevel_Actors);
     int32_t actorsCount = Memory::Read<int32_t>(persistentLevel + Engine::ULevel_Actors + 0x8);
-   // dbg = [dbg stringByAppendingFormat:@"Actors: %d\n", actorsCount];
-    
-    // self.debugLabel.text = dbg;
+
 
     if (!actorsData || actorsCount <= 0 || actorsCount > 10000) return;
 
