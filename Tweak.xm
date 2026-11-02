@@ -1,5 +1,59 @@
 #import <UIKit/UIKit.h>
 #import "PSYESP.h"
+#import <substrate.h>
+#import <mach-o/dyld.h>
+#import <sys/sysctl.h>
+#import <string.h>
+
+// --- 1. Скрываем наш .dylib из списка загруженных библиотек ---
+static const char* (*orig__dyld_get_image_name)(uint32_t image_index);
+static const char* new__dyld_get_image_name(uint32_t image_index) {
+    const char* name = orig__dyld_get_image_name(image_index);
+    if (name && strstr(name, "libAudioToolbox")) {
+        // Если ACE ищет нашу библиотеку, он увидит системный фреймворк
+        return "/usr/lib/libAudioToolbox.dylib"; 
+    }
+    return name;
+}
+
+// --- 2. Обходим проверку на отладку (Anti-Debug) ---
+static int (*orig_sysctl)(int *, u_int, void *, size_t *, void *, size_t);
+static int new_sysctl(int *name, u_int namelen, void *info, size_t *infosize, void *newinfo, size_t newinfosize) {
+    int ret = orig_sysctl(name, namelen, info, infosize, newinfo, newinfosize);
+    if (namelen == 4 && name[0] == CTL_KERN && name[1] == KERN_PROC && name[2] == KERN_PROC_PID) {
+        if (info && *infosize >= sizeof(struct kinfo_proc)) {
+            struct kinfo_proc *proc = (struct kinfo_proc *)info;
+            proc->kp_proc.p_flag &= ~P_TRACED; // Убираем флаг отладчика
+        }
+    }
+    return ret;
+}
+
+// --- 3. Прячем наше UI-окно от ACE ---
+// (ACE часто проверяет UIApplication.windows на наличие подозрительных окон)
+static NSArray* (*orig_windows)(id);
+static NSArray* new_windows(id self) {
+    NSArray* windows = orig_windows(self);
+    NSMutableArray* safeWindows = [NSMutableArray array];
+    for (id window in windows) {
+        // Если окно принадлежит нашему твику, не показываем его античиту
+        if (![NSStringFromClass([window class]) containsString:@"PSYMenu"] && 
+            ![NSStringFromClass([window class]) containsString:@"AudioSession"]) {
+            [safeWindows addObject:window];
+        }
+    }
+    return safeWindows;
+}
+
+// Активируем защиту при запуске (в методе %ctor)
+%ctor {
+    MSHookFunction((void *)_dyld_get_image_name, (void *)new__dyld_get_image_name, (void **)&orig__dyld_get_image_name);
+    MSHookFunction((void *)sysctl, (void *)new_sysctl, (void **)&orig_sysctl);
+    
+    // Хукаем метод получения всех окон
+    Class UIApplicationClass = objc_getClass("UIApplication");
+    MSHookMessageEx(UIApplicationClass, @selector(windows), (IMP)new_windows, (IMP *)&orig_windows);
+}
 
 // ============================================================
 // ЦВЕТА
